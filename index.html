@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flippy Flappy Crypto</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Loading ethers.js instead of Web3 -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="wallet-container">
+            <button id="connect-wallet" class="wallet-button">Connect EVM Wallet</button>
+            <div id="wallet-info" class="wallet-info">
+                <span id="wallet-address">Not connected</span>
+            </div>
+        </div>
+
+        <div class="game-intro" id="game-intro">
+            <h1>Flippy Flappy Crypto</h1>
+            <p>Collect ETH coins and avoid obstacles!</p>
+            <button id="start-button">Start Game</button>
+            <div class="instructions">
+                <p>Tap the screen or press space to fly</p>
+            </div>
+            <button id="show-leaderboard" class="leaderboard-button">Show Leaderboard</button>
+        </div>
+        
+        <div class="game-container">
+            <canvas id="game-canvas" width="320" height="480"></canvas>
+            
+            <div class="game-over" id="game-over">
+                <h2>Game Over!</h2>
+                <p>Your score: <span id="final-score">0</span></p>
+                <p>ETH collected: <span id="eth-collected">0</span></p>
+                <button id="restart-button">Play Again</button>
+                <button id="save-score" class="save-button">Save Results</button>
+            </div>
+        </div>
+        
+        <div class="score-container">
+            <div class="score">Score: <span id="score">0</span></div>
+            <div class="eth">ETH: <span id="eth">0</span></div>
+        </div>
+
+        <div class="leaderboard" id="leaderboard">
+            <h2>Top Players</h2>
+            <button id="close-leaderboard" class="close-button">×</button>
+            <div class="leaderboard-content">
+                <table id="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Score</th>
+                            <th>ETH</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <tr>
+                            <td colspan="4">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="your-best">
+                <h3>Your Best Score</h3>
+                <p id="your-best-score">Connect wallet to see your score</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading game script -->
+    <script src="game.js"></script>
+    
+    <!-- Simple wallet script -->
+    <script>
+        // Contract address
+        const CONTRACT_ADDRESS = '0x47019b3ba577dca6065a31f2db8aecc1efdbb7bc';
+
+        // Contract ABI
+        const CONTRACT_ABI = [
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": true,
+                        "internalType": "address",
+                        "name": "player",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "score",
+                        "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "ethCollected",
+                        "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "timestamp",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "NewTopScore",
+                "type": "event"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "_score",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_ethCollected",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "saveScore",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": true,
+                        "internalType": "address",
+                        "name": "player",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "score",
+                        "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "ethCollected",
+                        "type": "uint256"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "uint256",
+                        "name": "timestamp",
+                        "type": "uint256"
+                    }
+                ],
+                "name": "ScoreSaved",
+                "type": "event"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "_player",
+                        "type": "address"
+                    }
+                ],
+                "name": "getPlayerBestScore",
+                "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "address",
+                        "name": "_player",
+                        "type": "address"
+                    }
+                ],
+                "name": "getPlayerScores",
+                "outputs": [
+                    {
+                        "components": [
+                            {
+                                "internalType": "uint256",
+                                "name": "score",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "ethCollected",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "timestamp",
+                                "type": "uint256"
+                            }
+                        ],
+                        "internalType": "struct FlappyCryptoScore.Score[]",
+                        "name": "",
+                        "type": "tuple[]"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getTopScores",
+                "outputs": [
+                    {
+                        "components": [
+                            {
+                                "internalType": "uint256",
+                                "name": "score",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "ethCollected",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "timestamp",
+                                "type": "uint256"
+                            }
+                        ],
+                        "internalType": "struct FlappyCryptoScore.Score[]",
+                        "name": "",
+                        "type": "tuple[]"
+                    },
+                    {
+                        "internalType": "address[]",
+                        "name": "",
+                        "type": "address[]"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        // Global variables
+        let provider = null;
+        let signer = null;
+        let userAddress = null;
+        let contract = null;
+
+        // Simple wallet connection function
+        async function connectWallet() {
+            if (typeof window.ethereum === 'undefined') {
+                alert('MetaMask is not installed! Please install MetaMask and refresh the page.');
+                return;
+            }
+
+            try {
+                // Request access to accounts
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+                
+                if (!accounts || accounts.length === 0) {
+                    alert('Failed to get accounts');
+                    return;
+                }
+
+                // Create provider and signer
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                signer = provider.getSigner();
+                userAddress = accounts[0];
+                
+                // Create contract instance
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+                
+                // Update UI
+                const shortAddress = userAddress.slice(0, 6) + '...' + userAddress.slice(-4);
+                document.getElementById('wallet-address').textContent = shortAddress;
+                document.getElementById('connect-wallet').textContent = 'Connected';
+                
+                // Enable save button
+                const saveBtn = document.getElementById('save-score');
+                if (saveBtn) saveBtn.disabled = false;
+                
+                console.log('Wallet connected:', userAddress);
+                
+                // Load best score
+                loadPlayerBestScore();
+                
+            } catch (error) {
+                console.error('Error connecting wallet:', error);
+                alert('Connection error: ' + error.message);
+            }
+        }
+
+        // Save score function
+        async function saveScore() {
+            if (!contract || !userAddress) {
+                alert('Please connect your wallet first!');
+                return;
+            }
+            
+            try {
+                const score = parseInt(document.getElementById('final-score').textContent);
+                const ethCollected = parseInt(document.getElementById('eth-collected').textContent);
+                
+                // Send transaction
+                const tx = await contract.saveScore(score, ethCollected);
+                console.log('Transaction sent:', tx.hash);
+                
+                // Wait for confirmation
+                await tx.wait();
+                
+                alert('Result saved successfully!');
+                loadPlayerBestScore();
+                
+            } catch (error) {
+                console.error('Error saving score:', error);
+                alert('Save error: ' + error.message);
+            }
+        }
+
+        // Load player's best score
+        async function loadPlayerBestScore() {
+            if (!contract || !userAddress) return;
+            
+            try {
+                const result = await contract.getPlayerBestScore(userAddress);
+                const bestScore = result[0].toNumber();
+                const bestEth = result[1].toNumber();
+                const timestamp = result[2].toNumber();
+                
+                const display = document.getElementById('your-best-score');
+                if (bestScore === 0 && timestamp === 0) {
+                    display.textContent = 'No results';
+                } else {
+                    const date = new Date(timestamp * 1000).toLocaleDateString();
+                    display.textContent = `Score: ${bestScore} | ETH: ${bestEth} | Date: ${date}`;
+                }
+            } catch (error) {
+                console.error('Error loading best score:', error);
+            }
+        }
+
+        // Load leaderboard
+        async function loadLeaderboard() {
+            try {
+                let contractToUse = contract;
+                if (!contractToUse) {
+                    const readOnlyProvider = new ethers.providers.JsonRpcProvider('https://mainnet.base.org');
+                    contractToUse = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readOnlyProvider);
+                }
+                
+                const result = await contractToUse.getTopScores();
+                const scores = result[0];
+                const addresses = result[1];
+                
+                const tbody = document.getElementById('leaderboard-body');
+                if (scores.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">No results</td></tr>';
+                    return;
+                }
+                
+                let html = '';
+                for (let i = 0; i < scores.length; i++) {
+                    const addr = addresses[i];
+                    const shortAddr = addr.slice(0, 6) + '...' + addr.slice(-4);
+                    html += `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${shortAddr}</td>
+                            <td>${scores[i].score}</td>
+                            <td>${scores[i].ethCollected}</td>
+                        </tr>
+                    `;
+                }
+                tbody.innerHTML = html;
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+                document.getElementById('leaderboard-body').innerHTML = 
+                    '<tr><td colspan="4">Loading error</td></tr>';
+            }
+        }
+
+        // Initialize after page load
+        window.addEventListener('DOMContentLoaded', function() {
+            // Wallet connection button
+            document.getElementById('connect-wallet').addEventListener('click', connectWallet);
+            
+            // Save score button
+            const saveBtn = document.getElementById('save-score');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', saveScore);
+                saveBtn.disabled = true;
+            }
+            
+            // Leaderboard
+            document.getElementById('show-leaderboard').addEventListener('click', function() {
+                document.getElementById('leaderboard').style.display = 'block';
+                loadLeaderboard();
+            });
+            
+            document.getElementById('close-leaderboard').addEventListener('click', function() {
+                document.getElementById('leaderboard').style.display = 'none';
+            });
+            
+            // Listen for account changes
+            if (window.ethereum) {
+                window.ethereum.on('accountsChanged', function(accounts) {
+                    if (accounts.length === 0) {
+                        userAddress = null;
+                        document.getElementById('wallet-address').textContent = 'Not connected';
+                        document.getElementById('connect-wallet').textContent = 'Connect EVM Wallet';
+                        if (saveBtn) saveBtn.disabled = true;
+                    } else {
+                        connectWallet();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html> 
