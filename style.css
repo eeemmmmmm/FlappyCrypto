@@ -9,75 +9,166 @@ body {
     background-color: #0f0f23;
     color: #ffffff;
     display: flex;
-    justify-content: center;
-    align-items: center;
     min-height: 100vh;
     background-image: linear-gradient(to bottom, #0f0f23, #1a1a3a);
+    overflow: hidden;
 }
 
-.container {
-    width: 100%;
-    max-width: 500px;
+/* Sidebar Styles */
+.sidebar {
+    width: 220px;
+    background-color: rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border-right: 1px solid rgba(98, 201, 255, 0.2);
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.logo {
+    color: #62c9ff;
+    font-size: 2.2rem;
     text-align: center;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px rgba(98, 201, 255, 0.7);
+    line-height: 1;
 }
 
 .wallet-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    padding: 10px;
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center;
 }
 
 .wallet-button {
     background-color: #62ffbd;
     color: #0f0f23;
+    width: 100%;
+    border: none;
+    padding: 12px;
+    font-size: 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 10px;
 }
 
 .wallet-info {
     font-size: 0.8rem;
     color: #cccccc;
-    max-width: 60%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.game-intro {
-    padding: 20px;
-}
-
-.game-intro h1 {
-    font-size: 2.5rem;
-    margin-bottom: 15px;
-    color: #62c9ff;
-    text-shadow: 0 0 10px rgba(98, 201, 255, 0.7);
-}
-
-.game-intro p {
+.score-container {
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+    padding: 15px;
     margin-bottom: 20px;
+}
+
+.score-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.score-row:last-child {
+    margin-bottom: 0;
+}
+
+.score-label, .eth-label {
     font-size: 1.2rem;
 }
 
-.instructions {
-    margin-top: 20px;
-    font-size: 0.9rem;
-    color: #cccccc;
+.score-value {
+    font-size: 1.2rem;
+    color: #62c9ff;
+}
+
+.eth-value {
+    font-size: 1.2rem;
+    color: #62ffbd;
+}
+
+.buttons-container {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.leaderboard-button {
+    background-color: #ff9f43;
+    color: #0f0f23;
+    border: none;
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.leaderboard-button:hover {
+    background-color: #ff7e21;
+    transform: scale(1.05);
+}
+
+.start-button {
+    background-color: #62c9ff;
+    color: #0f0f23;
+    border: none;
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    animation: pulse 2s infinite;
+}
+
+.start-button:hover {
+    background-color: #3ab0ff;
+    transform: scale(1.05);
+}
+
+/* Main Area Styles */
+.main-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Starry background that covers the whole area */
+.starry-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000033;
+    z-index: 1;
 }
 
 .game-container {
     position: relative;
-    margin: 0 auto;
     width: 320px;
     height: 480px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 5;
 }
 
 #game-canvas {
-    background-color: #000033;
-    border-radius: 5px;
-    box-shadow: 0 0 20px rgba(98, 201, 255, 0.5);
+    background-color: transparent; /* Canvas is transparent to show the background */
+    border-radius: 10px;
+    box-shadow: 0 0 30px rgba(98, 201, 255, 0.8);
+    width: 320px;
+    height: 480px;
 }
 
 .game-over {
@@ -88,30 +179,16 @@ body {
     background-color: rgba(0, 0, 0, 0.8);
     padding: 20px;
     border-radius: 10px;
-    width: 80%;
+    width: 300px;
+    max-width: 80%;
     display: none;
+    text-align: center;
+    z-index: 100;
 }
 
 .game-over h2 {
     color: #ff6b6b;
     margin-bottom: 15px;
-}
-
-.score-container {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 20px;
-    padding: 10px;
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 5px;
-}
-
-.score, .eth {
-    font-size: 1.2rem;
-}
-
-.eth {
-    color: #62ffbd;
 }
 
 button {
@@ -147,30 +224,7 @@ button:hover {
     transform: none;
 }
 
-.transaction-status {
-    margin-top: 10px;
-    font-size: 0.9rem;
-    color: #cccccc;
-}
-
-.transaction-success {
-    color: #62ffbd;
-}
-
-.transaction-error {
-    color: #ff6b6b;
-}
-
 /* Leaderboard Styles */
-.leaderboard-button {
-    background-color: #ff9f43;
-    margin-top: 20px;
-}
-
-.leaderboard-button:hover {
-    background-color: #ff7e21;
-}
-
 .leaderboard {
     position: fixed;
     top: 50%;
@@ -191,6 +245,7 @@ button:hover {
     color: #62c9ff;
     margin-bottom: 15px;
     text-shadow: 0 0 10px rgba(98, 201, 255, 0.5);
+    text-align: center;
 }
 
 .close-button {
@@ -206,6 +261,7 @@ button:hover {
     line-height: 30px;
     text-align: center;
     border-radius: 50%;
+    margin-top: 0;
 }
 
 .close-button:hover {
@@ -246,6 +302,7 @@ button:hover {
 .your-best {
     padding-top: 15px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
 }
 
 .your-best h3 {
@@ -253,190 +310,56 @@ button:hover {
     margin-bottom: 10px;
 }
 
-@media (max-width: 500px) {
-    .container {
-        padding: 10px;
-    }
-    
-    .game-intro h1 {
-        font-size: 2rem;
-    }
-    
-    .leaderboard {
-        width: 95%;
-        padding: 15px;
-    }
-} 
-
-/* Добавляем стили для окна помощи по кошельку */
-.wallet-help {
-    margin-top: 15px;
-    font-size: 0.9rem;
-    color: #cccccc;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 15px;
-}
-
-.help-button {
-    background-color: transparent;
-    border: 1px solid #62c9ff;
-    color: #62c9ff;
-    margin-top: 10px;
-    font-size: 0.8rem;
-    padding: 5px 10px;
-}
-
-.help-button:hover {
-    background-color: rgba(98, 201, 255, 0.1);
-}
-
-.wallet-help-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-    z-index: 200;
-    overflow: auto;
-}
-
-.modal-content {
-    position: relative;
-    background-color: #0f0f23;
-    margin: 10% auto;
-    padding: 25px;
-    border-radius: 10px;
-    max-width: 500px;
-    box-shadow: 0 0 20px rgba(98, 201, 255, 0.7);
-}
-
-.modal-content h2 {
-    color: #62c9ff;
-    margin-bottom: 20px;
-}
-
-.modal-content h3 {
-    color: #62ffbd;
-    margin: 20px 0 10px;
-}
-
-.modal-content ol, .modal-content ul {
-    text-align: left;
-    margin-left: 20px;
-}
-
-.modal-content li {
-    margin-bottom: 10px;
-    line-height: 1.4;
-}
-
-.wallet-links {
-    margin-top: 20px;
-    padding-top: 15px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.wallet-links a {
-    display: inline-block;
-    margin: 10px;
-    color: #62c9ff;
-    text-decoration: none;
-    padding: 5px 15px;
-    border: 1px solid #62c9ff;
-    border-radius: 5px;
-    transition: all 0.3s ease;
-}
-
-.wallet-links a:hover {
-    background-color: rgba(98, 201, 255, 0.2);
-    transform: scale(1.05);
-}
-
-/* Добавляем анимацию для кнопки подключения кошелька */
+/* Animation */
 @keyframes pulse {
     0% { transform: scale(1); }
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
 
-.wallet-button {
-    animation: pulse 2s infinite;
-}
+/* Responsive styles for smaller screens */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        border-right: none;
+        border-bottom: 1px solid rgba(98, 201, 255, 0.2);
+        padding: 10px;
+    }
+    
+    .logo {
+        font-size: 1.5rem;
+        margin-bottom: 0;
+        margin-right: 20px;
+    }
+    
+    .wallet-container, .score-container {
+        margin-bottom: 0;
+        margin-right: 10px;
+    }
+    
+    .buttons-container {
+        margin-top: 0;
+        flex-direction: row;
+    }
+    
+    .main-area {
+        height: auto;
+        padding: 10px;
+    }
 
-/* Стили для модального окна выбора кошелька */
-.wallet-modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-}
+    .game-container {
+        width: 280px;
+        height: 420px;
+    }
 
-.wallet-modal-content {
-    background-color: #1a1a3a;
-    margin: 15% auto;
-    padding: 20px;
-    border: 1px solid #62c9ff;
-    border-radius: 10px;
-    width: 80%;
-    max-width: 400px;
-    box-shadow: 0 0 20px rgba(98, 201, 255, 0.7);
-}
-
-.close-modal {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.close-modal:hover,
-.close-modal:focus {
-    color: #fff;
-    text-decoration: none;
-}
-
-.wallet-options {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-top: 20px;
-}
-
-.wallet-option-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 15px;
-    border-radius: 8px;
-    background-color: #2a2a4a;
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.wallet-option-btn:hover {
-    background-color: #3a3a5a;
-    transform: translateY(-2px);
-}
-
-.wallet-option-btn img {
-    width: 30px;
-    height: 30px;
-    object-fit: contain;
-}
-
-/* Адаптивность для мобильных устройств */
-@media (max-width: 500px) {
-    .wallet-modal-content {
-        margin: 30% auto;
-        width: 90%;
+    #game-canvas {
+        width: 280px;
+        height: 420px;
     }
 } 
