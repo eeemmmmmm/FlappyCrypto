@@ -5,24 +5,94 @@ document.addEventListener('DOMContentLoaded', function() {
     const ctx = canvas.getContext('2d');
     const startButton = document.getElementById('start-button');
     const restartButton = document.getElementById('restart-button');
-    const gameIntro = document.getElementById('game-intro');
     const gameOver = document.getElementById('game-over');
     const scoreDisplay = document.getElementById('score');
     const ethDisplay = document.getElementById('eth');
     const finalScoreDisplay = document.getElementById('final-score');
     const ethCollectedDisplay = document.getElementById('eth-collected');
+    const starryBackground = document.getElementById('starry-background');
 
-    // Game field dimensions
+    console.log('Game elements loaded:', { 
+        canvas: canvas, 
+        startButton: startButton, 
+        restartButton: restartButton,
+        starryBackground: starryBackground
+    });
+
+    // Game field dimensions (standard size)
     const WIDTH = canvas.width;
     const HEIGHT = canvas.height;
+    
+    // Create starry background
+    function createStarryBackground() {
+        // Create canvas for starry background
+        const bgCanvas = document.createElement('canvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        
+        // Set canvas size to match container
+        bgCanvas.width = starryBackground.clientWidth;
+        bgCanvas.height = starryBackground.clientHeight;
+        
+        // Draw gradient background
+        const bgGradient = bgCtx.createLinearGradient(0, 0, 0, bgCanvas.height);
+        bgGradient.addColorStop(0, '#000033');
+        bgGradient.addColorStop(1, '#000055');
+        bgCtx.fillStyle = bgGradient;
+        bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+        
+        // Add stars
+        const starCount = Math.floor(bgCanvas.width * bgCanvas.height / 1000); // Scale based on area
+        for (let i = 0; i < starCount; i++) {
+            const x = Math.random() * bgCanvas.width;
+            const y = Math.random() * bgCanvas.height;
+            const radius = Math.random() * 1.5;
+            const opacity = Math.random() * 0.8 + 0.2;
+            
+            bgCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+            bgCtx.beginPath();
+            bgCtx.arc(x, y, radius, 0, Math.PI * 2);
+            bgCtx.fill();
+        }
+        
+        // Add some nebula effects
+        for (let i = 0; i < 5; i++) {
+            const x = Math.random() * bgCanvas.width;
+            const y = Math.random() * bgCanvas.height;
+            const radius = Math.random() * (bgCanvas.width / 8) + (bgCanvas.width / 16);
+            
+            const gradient = bgCtx.createRadialGradient(x, y, 0, x, y, radius);
+            const hue = Math.random() * 60 + 200; // Blue to purple
+            gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, 0.15)`);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            bgCtx.fillStyle = gradient;
+            bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+        }
+        
+        // Apply the canvas to the background div
+        starryBackground.style.background = 'none';
+        starryBackground.appendChild(bgCanvas);
+    }
+    
+    // Call once to create the background
+    createStarryBackground();
+    
+    // Recreate on window resize
+    window.addEventListener('resize', function() {
+        // Clear previous background
+        while (starryBackground.firstChild) {
+            starryBackground.removeChild(starryBackground.firstChild);
+        }
+        createStarryBackground();
+    });
 
     // Game settings
-    const GRAVITY = 0.5;
-    const FLAP_POWER = -8;
-    const PIPE_SPEED = 2;
-    const PIPE_SPAWN_INTERVAL = 120;
-    const PIPE_GAP = 150;
-    const COIN_SPAWN_CHANCE = 0.4;
+    const GRAVITY = 0.25; // Уменьшено с 0.5
+    const FLAP_POWER = -6; // Уменьшено с -8
+    const PIPE_SPEED = 1.5; // Уменьшено с 2
+    const PIPE_SPAWN_INTERVAL = 180; // Увеличено со 120
+    const PIPE_GAP = 200; // Увеличено со 150
+    const COIN_SPAWN_CHANCE = 0.5; // Увеличено с 0.4
 
     // Game objects
     let bird;
@@ -36,32 +106,22 @@ document.addEventListener('DOMContentLoaded', function() {
     let backgroundCanvas;
     let backgroundCtx;
 
-    // Create background canvas
+    // Create game background canvas
     function createBackground() {
         backgroundCanvas = document.createElement('canvas');
         backgroundCanvas.width = WIDTH;
         backgroundCanvas.height = HEIGHT;
         backgroundCtx = backgroundCanvas.getContext('2d');
         
-        // Draw gradient
+        // Draw transparent background (to show the starry background behind)
+        backgroundCtx.clearRect(0, 0, WIDTH, HEIGHT);
+        
+        // Add a subtle gradient overlay
         const bgGradient = backgroundCtx.createLinearGradient(0, 0, 0, HEIGHT);
-        bgGradient.addColorStop(0, '#000033');
-        bgGradient.addColorStop(1, '#000066');
+        bgGradient.addColorStop(0, 'rgba(0, 0, 51, 0.4)');
+        bgGradient.addColorStop(1, 'rgba(0, 0, 102, 0.4)');
         backgroundCtx.fillStyle = bgGradient;
         backgroundCtx.fillRect(0, 0, WIDTH, HEIGHT);
-        
-        // Add stars
-        for (let i = 0; i < 100; i++) {
-            const x = Math.random() * WIDTH;
-            const y = Math.random() * HEIGHT;
-            const radius = Math.random() * 1.5;
-            const opacity = Math.random() * 0.8 + 0.2;
-            
-            backgroundCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-            backgroundCtx.beginPath();
-            backgroundCtx.arc(x, y, radius, 0, Math.PI * 2);
-            backgroundCtx.fill();
-        }
     }
 
     // Create background on load
@@ -101,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Update rotation angle based on velocity
-            this.rotation = Math.min(Math.PI/4, Math.max(-Math.PI/4, this.velocity * 0.1));
+            this.rotation = Math.min(Math.PI/6, Math.max(-Math.PI/6, this.velocity * 0.08)); // Сделано плавнее
         }
 
         draw() {
@@ -128,15 +188,24 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.closePath();
             ctx.fill();
             
+            // Add glow effect
+            ctx.shadowColor = '#62c9ff';
+            ctx.shadowBlur = 10;
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.stroke();
+            
             ctx.restore();
         }
 
         checkCollision(object) {
+            // Уменьшаем хитбокс для более комфортной игры
+            const hitboxShrink = 5;
             return (
-                this.x < object.x + object.width &&
-                this.x + this.width > object.x &&
-                this.y < object.y + object.height &&
-                this.y + this.height > object.y
+                this.x + hitboxShrink < object.x + object.width - hitboxShrink &&
+                this.x + this.width - hitboxShrink > object.x + hitboxShrink &&
+                this.y + hitboxShrink < object.y + object.height - hitboxShrink &&
+                this.y + this.height - hitboxShrink > object.y + hitboxShrink
             );
         }
     }
@@ -148,8 +217,10 @@ document.addEventListener('DOMContentLoaded', function() {
             this.x = WIDTH;
             this.passed = false;
             
-            // Random height for top pipe
-            this.topHeight = Math.random() * (HEIGHT - PIPE_GAP - 100) + 50;
+            // Random height for top pipe, но делаем трубы более предсказуемыми
+            const minTopHeight = 50;
+            const maxTopHeight = HEIGHT - PIPE_GAP - 50;
+            this.topHeight = minTopHeight + Math.random() * (maxTopHeight - minTopHeight);
             this.bottomY = this.topHeight + PIPE_GAP;
             this.bottomHeight = HEIGHT - this.bottomY;
         }
@@ -206,11 +277,15 @@ document.addEventListener('DOMContentLoaded', function() {
             this.height = 30;
             this.collected = false;
             this.rotation = 0;
+            this.oscillation = 0;
         }
 
         update() {
             this.x -= PIPE_SPEED;
-            this.rotation += 0.05;
+            this.rotation += 0.03; // Замедлено с 0.05
+            this.oscillation += 0.03;
+            // Add gentle floating motion
+            this.y += Math.sin(this.oscillation) * 0.5;
         }
 
         draw() {
@@ -230,6 +305,9 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.closePath();
             ctx.fill();
             
+            // Add glow
+            ctx.shadowColor = '#62ffbd';
+            ctx.shadowBlur = 10;
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
             ctx.stroke();
@@ -251,11 +329,12 @@ document.addEventListener('DOMContentLoaded', function() {
             this.y = Math.random() * (HEIGHT - 100) + 50;
             this.type = Math.random() < 0.5 ? 'bear' : 'bug';
             this.rotation = 0;
+            this.rotationSpeed = (Math.random() - 0.5) * 0.01; // Еще замедлено с 0.02
         }
 
         update() {
-            this.x -= PIPE_SPEED * 1.2;
-            this.rotation += 0.03;
+            this.x -= PIPE_SPEED * 1.1; // Замедлено с 1.2
+            this.rotation += this.rotationSpeed;
         }
 
         draw() {
@@ -265,6 +344,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (this.type === 'bear') {
                 // Bear market (red)
+                ctx.shadowColor = '#ff6b6b';
+                ctx.shadowBlur = 10;
+                
                 ctx.fillStyle = '#ff6b6b';
                 ctx.beginPath();
                 ctx.arc(-this.width/4, -this.height/4, this.width/4, 0, Math.PI * 2);
@@ -277,6 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ctx.closePath();
                 ctx.fill();
                 
+                ctx.shadowBlur = 0;
                 ctx.fillStyle = '#000000';
                 ctx.beginPath();
                 ctx.arc(-this.width/4, -this.height/4, this.width/8, 0, Math.PI * 2);
@@ -286,9 +369,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             } else {
                 // Bug (blue)
+                ctx.shadowColor = '#4d79ff';
+                ctx.shadowBlur = 10;
+                
                 ctx.fillStyle = '#4d79ff';
                 ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
                 
+                ctx.shadowBlur = 0;
                 ctx.fillStyle = '#ffffff';
                 ctx.font = '20px Arial';
                 ctx.textAlign = 'center';
@@ -345,10 +432,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Coin collection effect
     function playCollectEffect(x, y) {
+        ctx.save();
         ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#62ffbd';
+        ctx.shadowBlur = 10;
         ctx.font = '20px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('+1 ETH', x, y - 20);
+        ctx.restore();
     }
 
     // Check collisions
@@ -413,7 +504,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear canvas
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
         
-        // Draw background
+        // Draw game background (transparent to let the starry background show)
         ctx.drawImage(backgroundCanvas, 0, 0);
         
         // Update frame counter
@@ -429,8 +520,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 coins.push(new Coin(WIDTH, randomY));
             }
             
-            // Random obstacle creation
-            if (Math.random() < 0.3) {
+            // Random obstacle creation - снижено с 0.3 до 0.2
+            if (Math.random() < 0.2) {
                 obstacles.push(new Obstacle());
             }
             
@@ -471,6 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Game initialization function
     function initGame() {
+        console.log('Initializing game...');
         bird = new Bird();
         pipes = [];
         coins = [];
@@ -482,7 +574,6 @@ document.addEventListener('DOMContentLoaded', function() {
         scoreDisplay.textContent = score;
         ethDisplay.textContent = ethCollected;
         
-        gameIntro.style.display = 'none';
         gameOver.style.display = 'none';
         
         gameActive = true;
@@ -491,15 +582,39 @@ document.addEventListener('DOMContentLoaded', function() {
         requestAnimationFrame(gameLoop);
     }
 
-    // Event handlers
-    startButton.addEventListener('click', initGame);
-    restartButton.addEventListener('click', initGame);
+    // Event listeners
+    if (startButton) {
+        console.log('Adding click event to startButton');
+        startButton.addEventListener('click', function() {
+            console.log('Start button clicked');
+            initGame();
+        });
+    } else {
+        console.error('Start button not found!');
+    }
+    
+    // Custom event listener for game start from sidebar button
+    document.addEventListener('startGame', function() {
+        console.log('Start game event received');
+        initGame();
+    });
+
+    if (restartButton) {
+        console.log('Adding click event to restartButton');
+        restartButton.addEventListener('click', function() {
+            console.log('Restart button clicked');
+            initGame();
+        });
+    } else {
+        console.error('Restart button not found!');
+    }
 
     // Key press handling
     document.addEventListener('keydown', (event) => {
         if (event.code === 'Space') {
             event.preventDefault();
-            if (!gameActive && gameIntro.style.display === 'none' && gameOver.style.display === 'none') {
+            if (!gameActive) {
+                console.log('Starting game with space key');
                 initGame();
             } else if (gameActive) {
                 bird.flap();
@@ -512,23 +627,32 @@ document.addEventListener('DOMContentLoaded', function() {
         event.preventDefault();
         if (gameActive) {
             bird.flap();
-        } else if (gameIntro.style.display === 'none' && gameOver.style.display === 'none') {
+        } else {
+            console.log('Starting game with touch');
             initGame();
         }
     });
 
-    // Mouse click handling
+    // Mouse click handling for in-game flap
     canvas.addEventListener('click', () => {
         if (gameActive) {
             bird.flap();
-        } else if (gameIntro.style.display === 'none' && gameOver.style.display === 'none') {
+        } else {
+            console.log('Starting game with canvas click');
             initGame();
         }
     });
 
-    // Initialize start screen
-    window.addEventListener('load', () => {
-        gameIntro.style.display = 'block';
-        gameOver.style.display = 'none';
-    });
+    // Initial draw to show the game field
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    ctx.drawImage(backgroundCanvas, 0, 0);
+    
+    // Draw initial message
+    ctx.fillStyle = '#62c9ff';
+    ctx.shadowColor = '#62c9ff';
+    ctx.shadowBlur = 15;
+    ctx.font = '24px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Нажмите "Start Game"', WIDTH / 2, HEIGHT / 2 - 30);
+    ctx.fillText('чтобы начать', WIDTH / 2, HEIGHT / 2 + 10);
 });
