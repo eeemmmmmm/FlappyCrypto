@@ -5,27 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flippy Flappy Crypto</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Loading ethers.js instead of Web3 -->
+    <!-- Loading ethers.js -->
     <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
 </head>
 <body>
-    <div class="container">
+    <div class="sidebar">
+        <h1 class="logo">FLIPPY<br>FLAPPY<br>CRYPTO</h1>
+        
         <div class="wallet-container">
-            <button id="connect-wallet" class="wallet-button">Connect EVM Wallet</button>
+            <button id="connect-wallet" class="wallet-button">Connect EVM<br>Wallet</button>
             <div id="wallet-info" class="wallet-info">
                 <span id="wallet-address">Not connected</span>
             </div>
         </div>
-
-        <div class="game-intro" id="game-intro">
-            <h1>Flippy Flappy Crypto</h1>
-            <p>Collect ETH coins and avoid obstacles!</p>
-            <button id="start-button">Start Game</button>
-            <div class="instructions">
-                <p>Tap the screen or press space to fly</p>
+        
+        <div class="score-container">
+            <div class="score-row">
+                <div class="score-label">Score</div>
+                <div class="score-value" id="score">0</div>
             </div>
-            <button id="show-leaderboard" class="leaderboard-button">Show Leaderboard</button>
+            <div class="score-row">
+                <div class="eth-label">ETH</div>
+                <div class="eth-value" id="eth">0</div>
+            </div>
         </div>
+        
+        <div class="buttons-container">
+            <button id="show-leaderboard" class="leaderboard-button">Leaderboard</button>
+            <button id="start-button" class="start-button">Start Game</button>
+        </div>
+    </div>
+    
+    <div class="main-area">
+        <!-- Звёздный фон на весь экран -->
+        <div id="starry-background" class="starry-background"></div>
         
         <div class="game-container">
             <canvas id="game-canvas" width="320" height="480"></canvas>
@@ -38,41 +51,55 @@
                 <button id="save-score" class="save-button">Save Results</button>
             </div>
         </div>
-        
-        <div class="score-container">
-            <div class="score">Score: <span id="score">0</span></div>
-            <div class="eth">ETH: <span id="eth">0</span></div>
+    </div>
+    
+    <div class="leaderboard" id="leaderboard">
+        <h2>Top Players</h2>
+        <button id="close-leaderboard" class="close-button">×</button>
+        <div class="leaderboard-content">
+            <table id="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Player</th>
+                        <th>Score</th>
+                        <th>ETH</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <tr>
+                        <td colspan="4">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-
-        <div class="leaderboard" id="leaderboard">
-            <h2>Top Players</h2>
-            <button id="close-leaderboard" class="close-button">×</button>
-            <div class="leaderboard-content">
-                <table id="leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Player</th>
-                            <th>Score</th>
-                            <th>ETH</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboard-body">
-                        <tr>
-                            <td colspan="4">Loading...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="your-best">
-                <h3>Your Best Score</h3>
-                <p id="your-best-score">Connect wallet to see your score</p>
-            </div>
+        <div class="your-best">
+            <h3>Your Best Score</h3>
+            <p id="your-best-score">Connect wallet to see your score</p>
         </div>
     </div>
 
     <!-- Loading game script -->
     <script src="game.js"></script>
+    
+    <!-- Script for debugging buttons -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM fully loaded - sidebar interface');
+            
+            // Fix for start button
+            const startBtn = document.getElementById('start-button');
+            if(startBtn) {
+                startBtn.onclick = function(e) {
+                    console.log('Start button clicked');
+                    
+                    // Emit custom event for game start
+                    const event = new Event('startGame');
+                    document.dispatchEvent(event);
+                };
+            }
+        });
+    </script>
     
     <!-- Simple wallet script -->
     <script>
@@ -262,13 +289,13 @@
                 "type": "function"
             }
         ];
-
+        
         // Global variables
         let provider = null;
         let signer = null;
         let userAddress = null;
         let contract = null;
-
+        
         // Simple wallet connection function
         async function connectWallet() {
             if (typeof window.ethereum === 'undefined') {
@@ -314,7 +341,7 @@
                 alert('Connection error: ' + error.message);
             }
         }
-
+        
         // Save score function
         async function saveScore() {
             if (!contract || !userAddress) {
@@ -364,7 +391,6 @@
             }
         }
 
-        // Load leaderboard
         async function loadLeaderboard() {
             try {
                 let contractToUse = contract;
@@ -403,7 +429,7 @@
                     '<tr><td colspan="4">Loading error</td></tr>';
             }
         }
-
+        
         // Initialize after page load
         window.addEventListener('DOMContentLoaded', function() {
             // Wallet connection button
