@@ -10,6 +10,7 @@ contract FlappyCryptoScore {
     struct Score {
         uint256 score;
         uint256 ethCollected;
+        uint256 distance; // Distance traveled in pixels
         uint256 timestamp;
     }
     
@@ -22,19 +23,21 @@ contract FlappyCryptoScore {
     uint256 private constant MAX_TOP_SCORES = 10;
     
     // Events
-    event ScoreSaved(address indexed player, uint256 score, uint256 ethCollected, uint256 timestamp);
-    event NewTopScore(address indexed player, uint256 score, uint256 ethCollected, uint256 timestamp);
+    event ScoreSaved(address indexed player, uint256 score, uint256 ethCollected, uint256 distance, uint256 timestamp);
+    event NewTopScore(address indexed player, uint256 score, uint256 ethCollected, uint256 distance, uint256 timestamp);
     
     /**
      * @dev Save a new score for the player
      * @param _score The player's score
      * @param _ethCollected The amount of ETH collected in the game
+     * @param _distance The distance traveled in pixels
      */
-    function saveScore(uint256 _score, uint256 _ethCollected) external {
+    function saveScore(uint256 _score, uint256 _ethCollected, uint256 _distance) external {
         // Create new score
         Score memory newScore = Score({
             score: _score,
             ethCollected: _ethCollected,
+            distance: _distance,
             timestamp: block.timestamp
         });
         
@@ -45,7 +48,7 @@ contract FlappyCryptoScore {
         _checkAndUpdateTopScores(msg.sender, newScore);
         
         // Emit event
-        emit ScoreSaved(msg.sender, _score, _ethCollected, block.timestamp);
+        emit ScoreSaved(msg.sender, _score, _ethCollected, _distance, block.timestamp);
     }
     
     /**
@@ -60,28 +63,30 @@ contract FlappyCryptoScore {
     /**
      * @dev Get the best score for a player
      * @param _player The player's address
-     * @return The player's best score, ETH collected, and timestamp
+     * @return The player's best score, ETH collected, distance, and timestamp
      */
-    function getPlayerBestScore(address _player) external view returns (uint256, uint256, uint256) {
+    function getPlayerBestScore(address _player) external view returns (uint256, uint256, uint256, uint256) {
         Score[] memory scores = playerScores[_player];
         
         if (scores.length == 0) {
-            return (0, 0, 0);
+            return (0, 0, 0, 0);
         }
         
         uint256 bestScore = 0;
         uint256 bestEthCollected = 0;
+        uint256 bestDistance = 0;
         uint256 timestamp = 0;
         
         for (uint256 i = 0; i < scores.length; i++) {
             if (scores[i].score > bestScore) {
                 bestScore = scores[i].score;
                 bestEthCollected = scores[i].ethCollected;
+                bestDistance = scores[i].distance;
                 timestamp = scores[i].timestamp;
             }
         }
         
-        return (bestScore, bestEthCollected, timestamp);
+        return (bestScore, bestEthCollected, bestDistance, timestamp);
     }
     
     /**
@@ -102,7 +107,7 @@ contract FlappyCryptoScore {
         if (topScores.length < MAX_TOP_SCORES) {
             topScores.push(_score);
             topScoreAddresses.push(_player);
-            emit NewTopScore(_player, _score.score, _score.ethCollected, _score.timestamp);
+            emit NewTopScore(_player, _score.score, _score.ethCollected, _score.distance, _score.timestamp);
             
             // Sort the array if needed
             if (topScores.length > 1) {
@@ -116,7 +121,7 @@ contract FlappyCryptoScore {
             // Replace the lowest score
             topScores[topScores.length - 1] = _score;
             topScoreAddresses[topScores.length - 1] = _player;
-            emit NewTopScore(_player, _score.score, _score.ethCollected, _score.timestamp);
+            emit NewTopScore(_player, _score.score, _score.ethCollected, _score.distance, _score.timestamp);
             
             // Re-sort the array
             _sortTopScores();
