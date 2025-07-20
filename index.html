@@ -47,6 +47,7 @@
                 <h2>Game Over!</h2>
                 <p>Your score: <span id="final-score">0</span></p>
                 <p>ETH collected: <span id="eth-collected">0</span></p>
+                <p>Distance traveled: <span id="distance-traveled">0</span>px</p>
                 <button id="restart-button">Play Again</button>
                 <button id="save-score" class="save-button">Save Results</button>
             </div>
@@ -64,11 +65,12 @@
                         <th>Player</th>
                         <th>Score</th>
                         <th>ETH</th>
+                        <th>Distance</th>
                     </tr>
                 </thead>
                 <tbody id="leaderboard-body">
                     <tr>
-                        <td colspan="4">Loading...</td>
+                        <td colspan="5">Loading...</td>
                     </tr>
                 </tbody>
             </table>
@@ -104,41 +106,47 @@
     <!-- Simple wallet script -->
     <script>
         // Contract address
-        const CONTRACT_ADDRESS = '0x47019b3ba577dca6065a31f2db8aecc1efdbb7bc';
+        const CONTRACT_ADDRESS = '0x292cc90a0c394872023ab9c5bacd1d5907a52ff0';
 
         // Contract ABI
         const CONTRACT_ABI = [
-            {
-                "anonymous": false,
-                "inputs": [
-                    {
-                        "indexed": true,
-                        "internalType": "address",
-                        "name": "player",
-                        "type": "address"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "score",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "ethCollected",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "timestamp",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "NewTopScore",
-                "type": "event"
-            },
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "score",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "ethCollected",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "distance",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "NewTopScore",
+		"type": "event"
+	},
             {
                 "inputs": [
                     {
@@ -149,6 +157,11 @@
                     {
                         "internalType": "uint256",
                         "name": "_ethCollected",
+                        "type": "uint256"
+                    },
+                    {
+                        "internalType": "uint256",
+                        "name": "_distance",
                         "type": "uint256"
                     }
                 ],
@@ -185,9 +198,43 @@
                         "type": "uint256"
                     }
                 ],
-                "name": "ScoreSaved",
-                "type": "event"
-            },
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "score",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "ethCollected",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "distance",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"name": "ScoreSaved",
+		"type": "event"
+	},
             {
                 "inputs": [
                     {
@@ -198,6 +245,11 @@
                 ],
                 "name": "getPlayerBestScore",
                 "outputs": [
+                    {
+                        "internalType": "uint256",
+                        "name": "",
+                        "type": "uint256"
+                    },
                     {
                         "internalType": "uint256",
                         "name": "",
@@ -241,6 +293,11 @@
                             },
                             {
                                 "internalType": "uint256",
+                                "name": "distance",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
                                 "name": "timestamp",
                                 "type": "uint256"
                             }
@@ -267,6 +324,11 @@
                             {
                                 "internalType": "uint256",
                                 "name": "ethCollected",
+                                "type": "uint256"
+                            },
+                            {
+                                "internalType": "uint256",
+                                "name": "distance",
                                 "type": "uint256"
                             },
                             {
@@ -352,9 +414,10 @@
             try {
                 const score = parseInt(document.getElementById('final-score').textContent);
                 const ethCollected = parseInt(document.getElementById('eth-collected').textContent);
+                const distance = parseInt(document.getElementById('distance-traveled').textContent);
                 
                 // Send transaction
-                const tx = await contract.saveScore(score, ethCollected);
+                const tx = await contract.saveScore(score, ethCollected, distance);
                 console.log('Transaction sent:', tx.hash);
                 
                 // Wait for confirmation
@@ -377,14 +440,15 @@
                 const result = await contract.getPlayerBestScore(userAddress);
                 const bestScore = result[0].toNumber();
                 const bestEth = result[1].toNumber();
-                const timestamp = result[2].toNumber();
+                const bestDistance = result[2].toNumber();
+                const timestamp = result[3].toNumber();
                 
                 const display = document.getElementById('your-best-score');
                 if (bestScore === 0 && timestamp === 0) {
                     display.textContent = 'No results';
                 } else {
                     const date = new Date(timestamp * 1000).toLocaleDateString();
-                    display.textContent = `Score: ${bestScore} | ETH: ${bestEth} | Date: ${date}`;
+                    display.textContent = `Score: ${bestScore} | ETH: ${bestEth} | Distance: ${bestDistance}px | Date: ${date}`;
                 }
             } catch (error) {
                 console.error('Error loading best score:', error);
@@ -405,7 +469,7 @@
                 
                 const tbody = document.getElementById('leaderboard-body');
                 if (scores.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4">No results</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5">No results</td></tr>';
                     return;
                 }
                 
@@ -419,6 +483,7 @@
                             <td>${shortAddr}</td>
                             <td>${scores[i].score}</td>
                             <td>${scores[i].ethCollected}</td>
+                            <td>${scores[i].distance}</td>
                         </tr>
                     `;
                 }
@@ -426,7 +491,7 @@
             } catch (error) {
                 console.error('Error loading leaderboard:', error);
                 document.getElementById('leaderboard-body').innerHTML = 
-                    '<tr><td colspan="4">Loading error</td></tr>';
+                    '<tr><td colspan="5">Loading error</td></tr>';
             }
         }
         
