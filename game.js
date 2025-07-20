@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const ethDisplay = document.getElementById('eth');
     const finalScoreDisplay = document.getElementById('final-score');
     const ethCollectedDisplay = document.getElementById('eth-collected');
+    const distanceTraveledDisplay = document.getElementById('distance-traveled');
     const starryBackground = document.getElementById('starry-background');
 
     console.log('Game elements loaded:', { 
@@ -101,6 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let obstacles = [];
     let score = 0;
     let ethCollected = 0;
+    let distanceTraveled = 0;
     let gameActive = false;
     let frameCount = 0;
     let backgroundCanvas;
@@ -494,6 +496,7 @@ document.addEventListener('DOMContentLoaded', function() {
         gameActive = false;
         finalScoreDisplay.textContent = score;
         ethCollectedDisplay.textContent = ethCollected;
+        distanceTraveledDisplay.textContent = distanceTraveled;
         gameOver.style.display = 'block';
     }
 
@@ -525,8 +528,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 obstacles.push(new Obstacle());
             }
             
-            // Increase score
+            // Increase score and distance
             score++;
+            distanceTraveled += PIPE_SPEED * PIPE_SPAWN_INTERVAL;
             scoreDisplay.textContent = score;
         }
         
@@ -569,6 +573,7 @@ document.addEventListener('DOMContentLoaded', function() {
         obstacles = [];
         score = 0;
         ethCollected = 0;
+        distanceTraveled = 0;
         frameCount = 0;
         
         scoreDisplay.textContent = score;
