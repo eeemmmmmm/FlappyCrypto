@@ -24,53 +24,62 @@ document.addEventListener('DOMContentLoaded', function() {
     const WIDTH = canvas.width;
     const HEIGHT = canvas.height;
     
-    // Create starry background
+    // Night mode toggle
+    const nightModeBtn = document.getElementById('night-mode-toggle');
+    function setNightMode(on) {
+        if (on) {
+            document.body.classList.add('night-mode');
+            nightModeBtn.textContent = '☀️ Day Mode';
+        } else {
+            document.body.classList.remove('night-mode');
+            nightModeBtn.textContent = '🌙 Night Mode';
+        }
+        // recreate starry background with brighter stars in night mode
+        while (starryBackground.firstChild) starryBackground.removeChild(starryBackground.firstChild);
+        createStarryBackground();
+    }
+    nightModeBtn.addEventListener('click', function() {
+        const isNight = !document.body.classList.contains('night-mode');
+        setNightMode(isNight);
+        localStorage.setItem('nightMode', isNight ? '1' : '0');
+    });
+    // On load, restore night mode
+    if (localStorage.getItem('nightMode') === '1') setNightMode(true);
+
+    // Modify createStarryBackground to use brighter stars in night mode
     function createStarryBackground() {
-        // Create canvas for starry background
         const bgCanvas = document.createElement('canvas');
         const bgCtx = bgCanvas.getContext('2d');
-        
-        // Set canvas size to match container
         bgCanvas.width = starryBackground.clientWidth;
         bgCanvas.height = starryBackground.clientHeight;
-        
-        // Draw gradient background
         const bgGradient = bgCtx.createLinearGradient(0, 0, 0, bgCanvas.height);
-        bgGradient.addColorStop(0, '#000033');
-        bgGradient.addColorStop(1, '#000055');
+        bgGradient.addColorStop(0, getComputedStyle(document.body).getPropertyValue('--star-bg'));
+        bgGradient.addColorStop(1, getComputedStyle(document.body).getPropertyValue('--star-bg'));
         bgCtx.fillStyle = bgGradient;
         bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
-        
-        // Add stars
-        const starCount = Math.floor(bgCanvas.width * bgCanvas.height / 1000); // Scale based on area
+        const starCount = Math.floor(bgCanvas.width * bgCanvas.height / 1000);
+        const isNight = document.body.classList.contains('night-mode');
         for (let i = 0; i < starCount; i++) {
             const x = Math.random() * bgCanvas.width;
             const y = Math.random() * bgCanvas.height;
-            const radius = Math.random() * 1.5;
-            const opacity = Math.random() * 0.8 + 0.2;
-            
+            const radius = Math.random() * (isNight ? 2.2 : 1.5);
+            const opacity = Math.random() * (isNight ? 1 : 0.8) + 0.2;
             bgCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
             bgCtx.beginPath();
             bgCtx.arc(x, y, radius, 0, Math.PI * 2);
             bgCtx.fill();
         }
-        
-        // Add some nebula effects
         for (let i = 0; i < 5; i++) {
             const x = Math.random() * bgCanvas.width;
             const y = Math.random() * bgCanvas.height;
             const radius = Math.random() * (bgCanvas.width / 8) + (bgCanvas.width / 16);
-            
             const gradient = bgCtx.createRadialGradient(x, y, 0, x, y, radius);
-            const hue = Math.random() * 60 + 200; // Blue to purple
-            gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, 0.15)`);
+            const hue = Math.random() * 60 + 200;
+            gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, ${isNight ? 0.25 : 0.15})`);
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            
             bgCtx.fillStyle = gradient;
             bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
         }
-        
-        // Apply the canvas to the background div
         starryBackground.style.background = 'none';
         starryBackground.appendChild(bgCanvas);
     }
