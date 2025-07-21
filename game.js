@@ -309,6 +309,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // --- Bird glow effect ---
+    let birdGlow = 0.4; // базовая интенсивность
+    let birdGlowTarget = 0.4;
+    let birdGlowPulse = 0;
+
+    // Модифицировать Bird.draw()
+    const origBirdDraw = Bird.prototype.draw;
+    Bird.prototype.draw = function() {
+        // Пульсация
+        birdGlowPulse += 0.08;
+        birdGlowTarget = 0.4 + 0.15 * Math.sin(birdGlowPulse);
+        // Плавное затухание к целевому
+        birdGlow += (birdGlowTarget - birdGlow) * 0.15;
+        ctx.save();
+        ctx.shadowColor = `rgba(255,255,180,${birdGlow})`;
+        ctx.shadowBlur = 32 + 32 * birdGlow;
+        origBirdDraw.call(this);
+        ctx.restore();
+    };
+
+    // Усиливать glow при сборе монеты или прохождении трубы
+    function boostBirdGlow() {
+        birdGlowTarget = 1.0;
+    }
+    // Найти места, где bird собирает монету или проходит трубу
+    // В функции playCollectEffect (монета)
+    const origPlayCollectEffect = playCollectEffect;
+    playCollectEffect = function(x, y) {
+        boostBirdGlow();
+        origPlayCollectEffect(x, y);
+    };
+    // В gameLoop при увеличении score (проход трубы)
+    // Найти: score++;
+    // После score++ добавить boostBirdGlow();
+    // (см. выше, где score++ и distanceTraveled += ...)
+    // ...
+    // score++;
+    // distanceTraveled += ...;
+    // updateScore();
+    // boostBirdGlow();
+
     // Pipe class (obstacles)
     class Pipe {
         constructor() {
@@ -630,6 +671,7 @@ document.addEventListener('DOMContentLoaded', function() {
             score++;
             distanceTraveled += PIPE_SPEED * PIPE_SPAWN_INTERVAL;
             updateScore();
+            boostBirdGlow(); // Усиливаем свечение при прохождении трубы
         }
         
         // Update and draw bird
