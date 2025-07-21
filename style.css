@@ -442,3 +442,7 @@ button:hover {
         height: 420px;
     }
 } 
+
+.comet-glow {
+    filter: drop-shadow(0 0 12px #fffbe6) drop-shadow(0 0 24px #fffbe6);
+} 
