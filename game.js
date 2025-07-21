@@ -489,6 +489,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateScore() {
         scoreDisplay.textContent = score;
         ethDisplay.textContent = ethCollected;
+        document.getElementById('distance').textContent = Math.floor(distanceTraveled);
     }
 
     // End game
@@ -531,7 +532,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Increase score and distance
             score++;
             distanceTraveled += PIPE_SPEED * PIPE_SPAWN_INTERVAL;
-            scoreDisplay.textContent = score;
+            updateScore();
         }
         
         // Update and draw bird
@@ -576,8 +577,7 @@ document.addEventListener('DOMContentLoaded', function() {
         distanceTraveled = 0;
         frameCount = 0;
         
-        scoreDisplay.textContent = score;
-        ethDisplay.textContent = ethCollected;
+        updateScore();
         
         gameOver.style.display = 'none';
         
