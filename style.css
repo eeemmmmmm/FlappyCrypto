@@ -1,3 +1,76 @@
+:root {
+    --sidebar-bg: #181830;
+    --main-bg: #0f0f23;
+    --score-color: #62c9ff;
+    --eth-color: #62ffbd;
+    --distance-color: #ffaa00;
+    --star-bg: #000033;
+    --star-bright: #fff;
+    --text-color: #fff;
+    --button-bg: #62c9ff;
+    --button-hover: #3ab0ff;
+}
+
+body.night-mode {
+    --sidebar-bg: #10101a;
+    --main-bg: #070713;
+    --score-color: #b3e0ff;
+    --eth-color: #b3ffe0;
+    --distance-color: #ffd580;
+    --star-bg: #000010;
+    --star-bright: #fffbe6;
+    --text-color: #e0e0ff;
+    --button-bg: #222244;
+    --button-hover: #444466;
+}
+
+body, .sidebar {
+    background: var(--main-bg);
+    color: var(--text-color);
+    transition: background 0.5s, color 0.5s;
+}
+
+.sidebar {
+    background: var(--sidebar-bg);
+    transition: background 0.5s;
+}
+
+.score-value {
+    color: var(--score-color);
+    transition: color 0.5s;
+}
+
+.eth-value {
+    color: var(--eth-color);
+    transition: color 0.5s;
+}
+
+.distance-value {
+    color: var(--distance-color);
+    transition: color 0.5s;
+}
+
+.night-mode-button {
+    background: var(--button-bg);
+    color: var(--text-color);
+    border: none;
+    padding: 10px;
+    font-size: 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background 0.3s, color 0.3s, transform 0.3s;
+}
+.night-mode-button:hover {
+    background: var(--button-hover);
+    transform: scale(1.05);
+}
+
+.starry-background {
+    background-color: var(--star-bg);
+    transition: background-color 0.5s;
+}
+
 * {
     margin: 0;
     padding: 0;
