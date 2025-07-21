@@ -46,7 +46,50 @@ document.addEventListener('DOMContentLoaded', function() {
     // On load, restore night mode
     if (localStorage.getItem('nightMode') === '1') setNightMode(true);
 
-    // Modify createStarryBackground to use brighter stars in night mode
+    // --- Comet animation ---
+    let comets = [];
+    function spawnComet() {
+        const isNight = document.body.classList.contains('night-mode');
+        const startY = Math.random() * (starryBackground.clientHeight * 0.5);
+        const length = Math.random() * 80 + 80;
+        comets.push({
+            x: -50,
+            y: startY,
+            vx: Math.random() * 4 + 6,
+            vy: Math.random() * 1.5 + 2,
+            length: length,
+            alpha: isNight ? 1 : 0.7,
+            life: 0,
+            maxLife: Math.random() * 40 + 60
+        });
+    }
+    function updateComets(bgCtx) {
+        for (let i = comets.length - 1; i >= 0; i--) {
+            const c = comets[i];
+            c.x += c.vx;
+            c.y += c.vy;
+            c.life++;
+            // Draw tail
+            const grad = bgCtx.createLinearGradient(c.x, c.y, c.x - c.length, c.y - c.length * 0.3);
+            grad.addColorStop(0, `rgba(255,255,255,${c.alpha})`);
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            bgCtx.save();
+            bgCtx.globalAlpha = c.alpha;
+            bgCtx.strokeStyle = grad;
+            bgCtx.lineWidth = 3;
+            bgCtx.shadowColor = '#fffbe6';
+            bgCtx.shadowBlur = 16;
+            bgCtx.beginPath();
+            bgCtx.moveTo(c.x, c.y);
+            bgCtx.lineTo(c.x - c.length, c.y - c.length * 0.3);
+            bgCtx.stroke();
+            bgCtx.restore();
+            if (c.life > c.maxLife || c.x > starryBackground.clientWidth + 100 || c.y > starryBackground.clientHeight + 100) {
+                comets.splice(i, 1);
+            }
+        }
+    }
+    // Модифицировать createStarryBackground для комет
     function createStarryBackground() {
         const bgCanvas = document.createElement('canvas');
         const bgCtx = bgCanvas.getContext('2d');
@@ -80,9 +123,54 @@ document.addEventListener('DOMContentLoaded', function() {
             bgCtx.fillStyle = gradient;
             bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
         }
+        // Draw comets
+        updateComets(bgCtx);
         starryBackground.style.background = 'none';
         starryBackground.appendChild(bgCanvas);
     }
+    // Анимация комет
+    setInterval(() => {
+        if (Math.random() < 0.18) spawnComet();
+        // Перерисовать только фон
+        if (starryBackground.firstChild) {
+            const bgCanvas = starryBackground.firstChild;
+            const bgCtx = bgCanvas.getContext('2d');
+            // Clear
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            // Redraw bg
+            const bgGradient = bgCtx.createLinearGradient(0, 0, 0, bgCanvas.height);
+            bgGradient.addColorStop(0, getComputedStyle(document.body).getPropertyValue('--star-bg'));
+            bgGradient.addColorStop(1, getComputedStyle(document.body).getPropertyValue('--star-bg'));
+            bgCtx.fillStyle = bgGradient;
+            bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+            // Redraw stars
+            const starCount = Math.floor(bgCanvas.width * bgCanvas.height / 1000);
+            const isNight = document.body.classList.contains('night-mode');
+            for (let i = 0; i < starCount; i++) {
+                const x = Math.random() * bgCanvas.width;
+                const y = Math.random() * bgCanvas.height;
+                const radius = Math.random() * (isNight ? 2.2 : 1.5);
+                const opacity = Math.random() * (isNight ? 1 : 0.8) + 0.2;
+                bgCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                bgCtx.beginPath();
+                bgCtx.arc(x, y, radius, 0, Math.PI * 2);
+                bgCtx.fill();
+            }
+            for (let i = 0; i < 5; i++) {
+                const x = Math.random() * bgCanvas.width;
+                const y = Math.random() * bgCanvas.height;
+                const radius = Math.random() * (bgCanvas.width / 8) + (bgCanvas.width / 16);
+                const gradient = bgCtx.createRadialGradient(x, y, 0, x, y, radius);
+                const hue = Math.random() * 60 + 200;
+                gradient.addColorStop(0, `hsla(${hue}, 100%, 60%, ${isNight ? 0.25 : 0.15})`);
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                bgCtx.fillStyle = gradient;
+                bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+            }
+            // Draw comets
+            updateComets(bgCtx);
+        }
+    }, 60);
     
     // Call once to create the background
     createStarryBackground();
