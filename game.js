@@ -333,22 +333,24 @@ document.addEventListener('DOMContentLoaded', function() {
     function boostBirdGlow() {
         birdGlowTarget = 1.0;
     }
-    // Найти места, где bird собирает монету или проходит трубу
-    // В функции playCollectEffect (монета)
+    // Coin collection effect
+    function playCollectEffect(x, y) {
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#62ffbd';
+        ctx.shadowBlur = 10;
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('+1 ETH', x, y - 20);
+        ctx.restore();
+    }
+
+    // --- Override playCollectEffect to boost bird glow on coin collection ---
     const origPlayCollectEffect = playCollectEffect;
     playCollectEffect = function(x, y) {
         boostBirdGlow();
         origPlayCollectEffect(x, y);
     };
-    // В gameLoop при увеличении score (проход трубы)
-    // Найти: score++;
-    // После score++ добавить boostBirdGlow();
-    // (см. выше, где score++ и distanceTraveled += ...)
-    // ...
-    // score++;
-    // distanceTraveled += ...;
-    // updateScore();
-    // boostBirdGlow();
 
     // Pipe class (obstacles)
     class Pipe {
@@ -568,18 +570,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 obstacles.splice(i, 1);
             }
         }
-    }
-
-    // Coin collection effect
-    function playCollectEffect(x, y) {
-        ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#62ffbd';
-        ctx.shadowBlur = 10;
-        ctx.font = '20px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('+1 ETH', x, y - 20);
-        ctx.restore();
     }
 
     // Check collisions
