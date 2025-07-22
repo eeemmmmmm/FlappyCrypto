@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const distanceTraveledDisplay = document.getElementById('distance-traveled');
     const starryBackground = document.getElementById('starry-background');
 
+    // --- Comet animation array must be declared before any function uses it ---
+    let comets = [];
+
     console.log('Game elements loaded:', { 
         canvas: canvas, 
         startButton: startButton, 
@@ -47,7 +50,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (localStorage.getItem('nightMode') === '1') setNightMode(true);
 
     // --- Comet animation ---
-    let comets = [];
     function spawnComet() {
         const isNight = document.body.classList.contains('night-mode');
         const startY = Math.random() * (starryBackground.clientHeight * 0.5);
@@ -406,6 +408,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         isOffScreen() {
+            // Returns true if the pipe is completely off the left edge of the screen
             return this.x + this.width < 0;
         }
     }
@@ -458,6 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         isOffScreen() {
+            // Returns true if the coin is completely off the left edge of the screen
             return this.x + this.width < 0;
         }
     }
@@ -529,6 +533,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         isOffScreen() {
+            // Returns true if the obstacle is completely off the left edge of the screen
             return this.x + this.width < 0;
         }
     }
