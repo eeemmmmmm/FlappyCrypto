@@ -36,6 +36,10 @@
                 <div class="shield-label">🛡️ Shield</div>
                 <div class="shield-value" id="shield-time">0s</div>
             </div>
+            <div class="score-row highscore-row">
+                <div class="highscore-label">🏆 Best</div>
+                <div class="highscore-value" id="highscore">0</div>
+            </div>
         </div>
         
         <div class="buttons-container">
@@ -53,11 +57,25 @@
         <div class="game-container">
             <canvas id="game-canvas" width="320" height="480"></canvas>
             
+            <!-- Combo display -->
+            <div id="combo-container" class="combo-container">
+                <div id="combo-count" class="combo-count">1x</div>
+                <div class="combo-bar">
+                    <div id="combo-bar-fill" class="combo-bar-fill"></div>
+                </div>
+            </div>
+            
+            <!-- Time indicator for slow motion -->
+            <div class="time-indicator"></div>
+            
             <div class="game-over" id="game-over">
                 <h2>Game Over!</h2>
                 <p>Your score: <span id="final-score">0</span></p>
                 <p>ETH collected: <span id="eth-collected">0</span></p>
                 <p>Distance traveled: <span id="distance-traveled">0</span>px</p>
+                <div class="new-highscore" id="new-highscore" style="display: none;">
+                    <p>🏆 New High Score! 🏆</p>
+                </div>
                 <button id="restart-button">Play Again</button>
                 <button id="save-score" class="save-button">Save Results</button>
             </div>
@@ -88,6 +106,10 @@
         <div class="your-best">
             <h3>Your Best Score</h3>
             <p id="your-best-score">Connect wallet to see your score</p>
+        </div>
+        <div class="local-highscore">
+            <h3>Local High Score</h3>
+            <p id="local-highscore">No local high score yet</p>
         </div>
     </div>
 
@@ -123,6 +145,25 @@
             </div>
             
             <div class="info-section">
+                <h3>Special Features</h3>
+                <div class="collectible-item">
+                    <div class="collectible-icon combo-icon">🔥</div>
+                    <div class="collectible-desc">
+                        <strong>Combo System</strong>
+                        <p>Collect ETH tokens quickly to build combos and earn bonus points!</p>
+                    </div>
+                </div>
+                
+                <div class="collectible-item">
+                    <div class="collectible-icon slow-icon">⏱️</div>
+                    <div class="collectible-desc">
+                        <strong>Slow Motion</strong>
+                        <p>Time slows down when you're near obstacles for precision control!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-section">
                 <h3>Obstacles</h3>
                 <div class="collectible-item">
                     <div class="collectible-icon bear-icon">🐻</div>
@@ -145,6 +186,7 @@
                 <h3>Scoring</h3>
                 <p>Each pipe passed: +1 point</p>
                 <p>Each ETH collected: +1 ETH</p>
+                <p>Combo bonus: +1 point per combo level</p>
                 <p>Try to get the highest score and save it to the blockchain!</p>
             </div>
             
@@ -410,6 +452,35 @@
         let userAddress = null;
         let contract = null;
         
+        // Local high score
+        function updateLocalHighScore(newScore) {
+            const currentHighScore = localStorage.getItem('highScore') || 0;
+            
+            if (newScore > currentHighScore) {
+                localStorage.setItem('highScore', newScore);
+                document.getElementById('new-highscore').style.display = 'block';
+                return true;
+            }
+            
+            return false;
+        }
+        
+        function displayLocalHighScore() {
+            const highScore = localStorage.getItem('highScore') || 0;
+            document.getElementById('highscore').textContent = highScore;
+            
+            const localHighScoreDisplay = document.getElementById('local-highscore');
+            if (localHighScoreDisplay) {
+                if (highScore > 0) {
+                    const ethCollected = localStorage.getItem('highScoreEth') || 0;
+                    const distance = localStorage.getItem('highScoreDistance') || 0;
+                    localHighScoreDisplay.textContent = `Score: ${highScore} | ETH: ${ethCollected} | Distance: ${distance}px`;
+                } else {
+                    localHighScoreDisplay.textContent = 'No local high score yet';
+                }
+            }
+        }
+        
         // Simple wallet connection function
         async function connectWallet() {
             if (typeof window.ethereum === 'undefined') {
@@ -549,6 +620,9 @@
         
         // Initialize after page load
         window.addEventListener('DOMContentLoaded', function() {
+            // Load local high score
+            displayLocalHighScore();
+            
             // Wallet connection button
             document.getElementById('connect-wallet').addEventListener('click', connectWallet);
             
@@ -582,6 +656,20 @@
                 document.getElementById('game-info').style.display = 'none';
                 // Dispatch event to start game
                 document.dispatchEvent(new Event('startGame'));
+            });
+            
+            // Custom event for game over to update high score
+            document.addEventListener('gameOver', function(e) {
+                const score = e.detail.score;
+                const ethCollected = e.detail.ethCollected;
+                const distance = e.detail.distance;
+                
+                // Update local high score
+                if (updateLocalHighScore(score)) {
+                    localStorage.setItem('highScoreEth', ethCollected);
+                    localStorage.setItem('highScoreDistance', distance);
+                    displayLocalHighScore();
+                }
             });
             
             // Listen for account changes
