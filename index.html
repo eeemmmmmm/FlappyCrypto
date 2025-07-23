@@ -32,17 +32,22 @@
                 <div class="distance-label">📏 Distance</div>
                 <div class="distance-value" id="distance">0</div>
             </div>
+            <div class="score-row shield-status-container" id="shield-status-container" style="display: none;">
+                <div class="shield-label">🛡️ Shield</div>
+                <div class="shield-value" id="shield-time">0s</div>
+            </div>
         </div>
         
         <div class="buttons-container">
             <button id="show-leaderboard" class="leaderboard-button">Leaderboard</button>
             <button id="start-button" class="start-button">Start Game</button>
+            <button id="show-info" class="info-button">How to Play</button>
             <button id="night-mode-toggle" class="night-mode-button">🌙 Night Mode</button>
         </div>
     </div>
     
     <div class="main-area">
-        <!-- Звёздный фон на весь экран -->
+        <!-- Starry background for the whole screen -->
         <div id="starry-background" class="starry-background"></div>
         
         <div class="game-container">
@@ -86,27 +91,69 @@
         </div>
     </div>
 
+    <!-- Game Info Modal -->
+    <div class="game-info" id="game-info">
+        <div class="info-content">
+            <button id="close-info" class="close-button">×</button>
+            <h2>How to Play</h2>
+            
+            <div class="info-section">
+                <h3>Controls</h3>
+                <p>Click, tap or press <kbd>Space</kbd> to make your Ethereum token fly!</p>
+                <p>Avoid the red pipes and obstacles to stay alive.</p>
+            </div>
+            
+            <div class="info-section">
+                <h3>Collectibles</h3>
+                <div class="collectible-item">
+                    <div class="collectible-icon eth-icon">💎</div>
+                    <div class="collectible-desc">
+                        <strong>ETH Tokens</strong>
+                        <p>Collect green diamonds to increase your ETH count.</p>
+                    </div>
+                </div>
+                
+                <div class="collectible-item">
+                    <div class="collectible-icon shield-icon">🛡️</div>
+                    <div class="collectible-desc">
+                        <strong>Shield Power-up</strong>
+                        <p>Blue shield icons grant temporary invincibility for 5 seconds!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <h3>Obstacles</h3>
+                <div class="collectible-item">
+                    <div class="collectible-icon bear-icon">🐻</div>
+                    <div class="collectible-desc">
+                        <strong>Bear Market</strong>
+                        <p>Red bear obstacles will crash your token!</p>
+                    </div>
+                </div>
+                
+                <div class="collectible-item">
+                    <div class="collectible-icon bug-icon">🐞</div>
+                    <div class="collectible-desc">
+                        <strong>Bug</strong>
+                        <p>Blue bug obstacles will also crash your token!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <h3>Scoring</h3>
+                <p>Each pipe passed: +1 point</p>
+                <p>Each ETH collected: +1 ETH</p>
+                <p>Try to get the highest score and save it to the blockchain!</p>
+            </div>
+            
+            <button id="start-from-info" class="start-button">Start Game</button>
+        </div>
+    </div>
+
     <!-- Loading game script -->
     <script src="game.js"></script>
-    
-    <!-- Script for debugging buttons -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM fully loaded - sidebar interface');
-            
-            // Fix for start button
-            const startBtn = document.getElementById('start-button');
-            if(startBtn) {
-                startBtn.onclick = function(e) {
-                    console.log('Start button clicked');
-                    
-                    // Emit custom event for game start
-                    const event = new Event('startGame');
-                    document.dispatchEvent(event);
-                };
-            }
-        });
-    </script>
     
     <!-- Simple wallet script -->
     <script>
@@ -520,6 +567,21 @@
             
             document.getElementById('close-leaderboard').addEventListener('click', function() {
                 document.getElementById('leaderboard').style.display = 'none';
+            });
+            
+            // Game info
+            document.getElementById('show-info').addEventListener('click', function() {
+                document.getElementById('game-info').style.display = 'flex';
+            });
+            
+            document.getElementById('close-info').addEventListener('click', function() {
+                document.getElementById('game-info').style.display = 'none';
+            });
+            
+            document.getElementById('start-from-info').addEventListener('click', function() {
+                document.getElementById('game-info').style.display = 'none';
+                // Dispatch event to start game
+                document.dispatchEvent(new Event('startGame'));
             });
             
             // Listen for account changes
