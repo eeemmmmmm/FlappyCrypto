@@ -15,6 +15,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Comet animation array must be declared before any function uses it ---
     let comets = [];
+    
+    // --- Shield power-up variables ---
+    let shieldActive = false;
+    let shieldTimeLeft = 0;
+    const SHIELD_DURATION = 5000; // Shield lasts for 5 seconds
+    const SHIELD_SPAWN_CHANCE = 0.1; // 10% chance to spawn a shield power-up
 
     console.log('Game elements loaded:', { 
         canvas: canvas, 
@@ -199,6 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let pipes = [];
     let coins = [];
     let obstacles = [];
+    let shields = []; // Array to store shield power-ups
     let score = 0;
     let ethCollected = 0;
     let distanceTraveled = 0;
@@ -538,6 +545,140 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Shield power-up class
+    class Shield {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.width = 30;
+            this.height = 30;
+            this.collected = false;
+            this.rotation = 0;
+            this.oscillation = 0;
+        }
+
+        update() {
+            this.x -= PIPE_SPEED;
+            this.rotation += 0.02;
+            this.oscillation += 0.03;
+            // Add gentle floating motion
+            this.y += Math.sin(this.oscillation) * 0.5;
+        }
+
+        draw() {
+            if (this.collected) return;
+            
+            ctx.save();
+            ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+            ctx.rotate(this.rotation);
+            
+            // Draw shield icon
+            ctx.fillStyle = '#4d79ff'; // Blue shield
+            ctx.beginPath();
+            ctx.arc(0, 0, this.width/2, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw shield symbol
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(-this.width/4, 0);
+            ctx.lineTo(0, -this.height/4);
+            ctx.lineTo(this.width/4, 0);
+            ctx.lineTo(0, this.height/4);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add glow
+            ctx.shadowColor = '#4d79ff';
+            ctx.shadowBlur = 15;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        isOffScreen() {
+            return this.x + this.width < 0;
+        }
+    }
+
+    // Update shields
+    function updateShields() {
+        for (let i = shields.length - 1; i >= 0; i--) {
+            shields[i].update();
+            
+            if (!shields[i].collected) {
+                shields[i].draw();
+                
+                // Check shield collection
+                if (bird.checkCollision(shields[i])) {
+                    shields[i].collected = true;
+                    activateShield();
+                    
+                    // Shield collection effect
+                    playShieldEffect(shields[i].x, shields[i].y);
+                }
+            }
+            
+            // Remove shields that are off screen
+            if (shields[i].isOffScreen()) {
+                shields.splice(i, 1);
+            }
+        }
+    }
+
+    // Shield collection effect
+    function playShieldEffect(x, y) {
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#4d79ff';
+        ctx.shadowBlur = 15;
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('SHIELD!', x, y - 20);
+        ctx.restore();
+    }
+
+    // Activate shield
+    function activateShield() {
+        shieldActive = true;
+        shieldTimeLeft = SHIELD_DURATION;
+        console.log('Shield activated!');
+    }
+
+    // Update shield status
+    function updateShieldStatus(deltaTime) {
+        if (shieldActive) {
+            shieldTimeLeft -= deltaTime;
+            if (shieldTimeLeft <= 0) {
+                shieldActive = false;
+                console.log('Shield deactivated!');
+            }
+        }
+    }
+
+    // Draw shield effect around bird
+    function drawShieldEffect() {
+        if (shieldActive) {
+            const pulseIntensity = 0.5 + 0.5 * Math.sin(Date.now() / 200);
+            const radius = bird.width * 0.8 * (1 + 0.2 * pulseIntensity);
+            
+            ctx.save();
+            ctx.globalAlpha = 0.3 + 0.2 * pulseIntensity;
+            ctx.beginPath();
+            ctx.arc(bird.x + bird.width/2, bird.y + bird.height/2, radius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(77, 121, 255, ${0.3 + 0.2 * pulseIntensity})`;
+            ctx.fill();
+            
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 + 0.4 * pulseIntensity})`;
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+
     // Update coins
     function updateCoins() {
         for (let i = coins.length - 1; i >= 0; i--) {
@@ -577,8 +718,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Check collisions
+    // Check collisions - modified to account for shield
     function checkCollisions() {
+        // Skip collision detection if shield is active
+        if (shieldActive) return;
+        
         // Check collisions with pipes
         for (const pipe of pipes) {
             // Top pipe
@@ -634,9 +778,14 @@ document.addEventListener('DOMContentLoaded', function() {
         gameOver.style.display = 'block';
     }
 
-    // Main game loop
+    // Main game loop - modified to include shield updates
     function gameLoop() {
         if (!gameActive) return;
+        
+        // Calculate delta time for smooth animations
+        const now = Date.now();
+        const deltaTime = now - (lastTime || now);
+        lastTime = now;
         
         // Clear canvas
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -657,7 +806,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 coins.push(new Coin(WIDTH, randomY));
             }
             
-            // Random obstacle creation - снижено с 0.3 до 0.2
+            // Random shield creation
+            if (Math.random() < SHIELD_SPAWN_CHANCE) {
+                const randomY = Math.random() * (HEIGHT - 100) + 50;
+                shields.push(new Shield(WIDTH, randomY));
+            }
+            
+            // Random obstacle creation
             if (Math.random() < 0.2) {
                 obstacles.push(new Obstacle());
             }
@@ -666,12 +821,18 @@ document.addEventListener('DOMContentLoaded', function() {
             score++;
             distanceTraveled += PIPE_SPEED * PIPE_SPAWN_INTERVAL;
             updateScore();
-            boostBirdGlow(); // Усиливаем свечение при прохождении трубы
+            boostBirdGlow();
         }
+        
+        // Update shield status
+        updateShieldStatus(deltaTime);
         
         // Update and draw bird
         bird.update();
         bird.draw();
+        
+        // Draw shield effect if active
+        drawShieldEffect();
         
         // Update and draw pipes
         for (let i = pipes.length - 1; i >= 0; i--) {
@@ -687,6 +848,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update and draw coins
         updateCoins();
         
+        // Update and draw shields
+        updateShields();
+        
         // Update and draw obstacles
         updateObstacles();
         
@@ -699,17 +863,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Game initialization function
+    // Game initialization function - modified to reset shield status
     function initGame() {
         console.log('Initializing game...');
         bird = new Bird();
         pipes = [];
         coins = [];
         obstacles = [];
+        shields = [];
         score = 0;
         ethCollected = 0;
         distanceTraveled = 0;
         frameCount = 0;
+        shieldActive = false;
+        shieldTimeLeft = 0;
+        lastTime = null;
         
         updateScore();
         
@@ -720,6 +888,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Start game loop
         requestAnimationFrame(gameLoop);
     }
+
+    // Add lastTime variable for delta time calculation
+    let lastTime = null;
 
     // Event listeners
     if (startButton) {
