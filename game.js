@@ -21,6 +21,20 @@ document.addEventListener('DOMContentLoaded', function() {
     let shieldTimeLeft = 0;
     const SHIELD_DURATION = 5000; // Shield lasts for 5 seconds
     const SHIELD_SPAWN_CHANCE = 0.1; // 10% chance to spawn a shield power-up
+    
+    // --- Combo system variables ---
+    let comboCount = 0;
+    let comboTimeLeft = 0;
+    const COMBO_DURATION = 3000; // 3 seconds to maintain combo
+    const comboDisplay = document.getElementById('combo-display');
+    const comboContainer = document.getElementById('combo-container');
+    
+    // --- Slow motion effect variables ---
+    let slowMotionActive = false;
+    let slowMotionFactor = 1.0;
+    const SLOW_MOTION_FACTOR = 0.5; // 50% slower
+    const SLOW_MOTION_DISTANCE = 100; // Distance to trigger slow motion
+    const SLOW_MOTION_TRANSITION_SPEED = 0.05; // How fast to transition
 
     console.log('Game elements loaded:', { 
         canvas: canvas, 
@@ -679,7 +693,117 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Update coins
+    // Update combo system
+    function updateCombo(deltaTime) {
+        if (comboCount > 0) {
+            comboTimeLeft -= deltaTime;
+            
+            // Update combo display
+            if (comboContainer) {
+                comboContainer.style.display = 'block';
+                const percentage = Math.max(0, comboTimeLeft / COMBO_DURATION * 100);
+                document.getElementById('combo-bar-fill').style.width = percentage + '%';
+                document.getElementById('combo-count').textContent = comboCount + 'x';
+            }
+            
+            if (comboTimeLeft <= 0) {
+                resetCombo();
+            }
+        }
+    }
+    
+    // Reset combo
+    function resetCombo() {
+        comboCount = 0;
+        comboTimeLeft = 0;
+        if (comboContainer) {
+            comboContainer.style.display = 'none';
+        }
+    }
+    
+    // Add to combo
+    function addToCombo() {
+        comboCount++;
+        comboTimeLeft = COMBO_DURATION;
+        
+        // Show combo effect
+        if (comboContainer) {
+            comboContainer.style.display = 'block';
+            comboContainer.classList.add('combo-pulse');
+            setTimeout(() => {
+                comboContainer.classList.remove('combo-pulse');
+            }, 300);
+        }
+        
+        // Add bonus points based on combo
+        const bonusPoints = comboCount - 1; // No bonus for first coin
+        if (bonusPoints > 0) {
+            score += bonusPoints;
+            showComboText(bonusPoints);
+        }
+    }
+    
+    // Show combo bonus text
+    function showComboText(bonusPoints) {
+        const comboText = document.createElement('div');
+        comboText.className = 'combo-text';
+        comboText.textContent = `+${bonusPoints} COMBO!`;
+        document.querySelector('.game-container').appendChild(comboText);
+        
+        // Position near the bird
+        comboText.style.left = (bird.x + bird.width/2) + 'px';
+        comboText.style.top = (bird.y - 30) + 'px';
+        
+        // Remove after animation
+        setTimeout(() => {
+            comboText.remove();
+        }, 1000);
+    }
+    
+    // Check for slow motion trigger
+    function checkSlowMotion() {
+        let shouldActivate = false;
+        
+        // Check proximity to obstacles
+        for (const obstacle of obstacles) {
+            const dx = obstacle.x - bird.x;
+            if (dx > 0 && dx < SLOW_MOTION_DISTANCE) {
+                shouldActivate = true;
+                break;
+            }
+        }
+        
+        // Check proximity to pipes
+        for (const pipe of pipes) {
+            const dx = pipe.x - bird.x;
+            if (dx > 0 && dx < SLOW_MOTION_DISTANCE) {
+                // Check if bird is near the gap edges
+                const gapTop = pipe.topHeight;
+                const gapBottom = pipe.bottomY;
+                
+                // If bird is within 30px of edge, activate slow motion
+                if (Math.abs(bird.y - gapTop) < 30 || Math.abs(bird.y + bird.height - gapBottom) < 30) {
+                    shouldActivate = true;
+                    break;
+                }
+            }
+        }
+        
+        // Gradually transition to target slow motion factor
+        const targetFactor = shouldActivate ? SLOW_MOTION_FACTOR : 1.0;
+        slowMotionFactor += (targetFactor - slowMotionFactor) * SLOW_MOTION_TRANSITION_SPEED;
+        
+        // Update visual effects based on slow motion
+        if (slowMotionFactor < 0.9) {
+            document.body.classList.add('slow-motion');
+            const intensity = 1 - slowMotionFactor; // 0 to 0.5
+            document.documentElement.style.setProperty('--slow-motion-intensity', intensity);
+        } else {
+            document.body.classList.remove('slow-motion');
+        }
+    }
+
+    // Update coins - modified to include combo system
     function updateCoins() {
         for (let i = coins.length - 1; i >= 0; i--) {
             coins[i].update();
@@ -692,6 +816,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     coins[i].collected = true;
                     ethCollected++;
                     ethDisplay.textContent = ethCollected;
+                    
+                    // Add to combo
+                    addToCombo();
                     
                     // Coin collection effect
                     playCollectEffect(coins[i].x, coins[i].y);
@@ -776,9 +903,18 @@ document.addEventListener('DOMContentLoaded', function() {
         ethCollectedDisplay.textContent = ethCollected;
         distanceTraveledDisplay.textContent = distanceTraveled;
         gameOver.style.display = 'block';
+        
+        // Dispatch gameOver event for high score tracking
+        document.dispatchEvent(new CustomEvent('gameOver', {
+            detail: {
+                score: score,
+                ethCollected: ethCollected,
+                distance: Math.floor(distanceTraveled)
+            }
+        }));
     }
 
-    // Main game loop - modified to include shield updates
+    // Main game loop - modified to include combo and slow motion
     function gameLoop() {
         if (!gameActive) return;
         
@@ -786,6 +922,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const now = Date.now();
         const deltaTime = now - (lastTime || now);
         lastTime = now;
+        
+        // Apply slow motion to delta time
+        const adjustedDeltaTime = deltaTime * slowMotionFactor;
         
         // Clear canvas
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
@@ -795,6 +934,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update frame counter
         frameCount++;
+        
+        // Check for slow motion
+        checkSlowMotion();
         
         // Create new pipes
         if (frameCount % PIPE_SPAWN_INTERVAL === 0) {
@@ -825,7 +967,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Update shield status
-        updateShieldStatus(deltaTime);
+        updateShieldStatus(adjustedDeltaTime);
+        
+        // Update combo
+        updateCombo(adjustedDeltaTime);
         
         // Update and draw bird
         bird.update();
@@ -863,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Game initialization function - modified to reset shield status
+    // Game initialization function - modified to reset combo and slow motion
     function initGame() {
         console.log('Initializing game...');
         bird = new Bird();
@@ -877,9 +1022,13 @@ document.addEventListener('DOMContentLoaded', function() {
         frameCount = 0;
         shieldActive = false;
         shieldTimeLeft = 0;
+        comboCount = 0;
+        comboTimeLeft = 0;
+        slowMotionFactor = 1.0;
         lastTime = null;
         
         updateScore();
+        resetCombo();
         
         gameOver.style.display = 'none';
         
