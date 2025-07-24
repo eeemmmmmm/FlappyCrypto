@@ -983,3 +983,116 @@ body.slow-motion .time-indicator {
         font-size: 16px;
     }
 } 
+
+/* Double points power-up styles */
+.double-points-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 20px;
+    padding: 5px 15px;
+    display: none;
+    z-index: 10;
+    border: 1px solid #ff3366;
+    box-shadow: 0 0 10px rgba(255, 51, 102, 0.6);
+}
+
+.power-up-pulse {
+    animation: powerUpPulse 0.5s ease;
+}
+
+@keyframes powerUpPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.double-points-icon {
+    color: #ff3366;
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 5px;
+    text-shadow: 0 0 10px rgba(255, 51, 102, 0.7);
+}
+
+.double-points-time {
+    color: #ffffff;
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.double-points-bar {
+    width: 60px;
+    height: 5px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.double-points-bar-fill {
+    height: 100%;
+    width: 100%;
+    background-color: #ff3366;
+    border-radius: 3px;
+    transition: width 0.1s linear;
+}
+
+.double-points-text {
+    position: absolute;
+    color: #ff3366;
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 0 0 8px rgba(255, 51, 102, 0.7);
+    animation: doublePointsFloat 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 100;
+}
+
+@keyframes doublePointsFloat {
+    0% { opacity: 0; transform: translateY(0); }
+    10% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-50px); }
+}
+
+/* Double points icon in info modal */
+.double-points-icon {
+    background-color: rgba(255, 51, 102, 0.2);
+    box-shadow: 0 0 10px rgba(255, 51, 102, 0.5);
+    animation: doublePointsIconPulse 2s infinite;
+}
+
+@keyframes doublePointsIconPulse {
+    0% { box-shadow: 0 0 10px rgba(255, 51, 102, 0.5); }
+    50% { box-shadow: 0 0 15px rgba(255, 51, 102, 0.7); }
+    100% { box-shadow: 0 0 10px rgba(255, 51, 102, 0.5); }
+}
+
+/* Responsive adjustments for power-ups */
+@media (max-width: 768px) {
+    .double-points-container {
+        top: 5px;
+        right: 5px;
+        padding: 3px 10px;
+    }
+    
+    .double-points-icon {
+        font-size: 20px;
+    }
+    
+    .double-points-time {
+        font-size: 12px;
+    }
+    
+    .double-points-bar {
+        width: 50px;
+        height: 4px;
+    }
+    
+    .double-points-text {
+        font-size: 16px;
+    }
+} 
