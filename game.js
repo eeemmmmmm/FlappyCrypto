@@ -35,6 +35,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const SLOW_MOTION_FACTOR = 0.5; // 50% slower
     const SLOW_MOTION_DISTANCE = 100; // Distance to trigger slow motion
     const SLOW_MOTION_TRANSITION_SPEED = 0.05; // How fast to transition
+    
+    // --- Double points power-up variables ---
+    let doublePointsActive = false;
+    let doublePointsTimeLeft = 0;
+    const DOUBLE_POINTS_DURATION = 10000; // 10 seconds of double points
+    const DOUBLE_POINTS_SPAWN_CHANCE = 0.05; // 5% chance to spawn double points power-up
+    const doublePointsContainer = document.getElementById('double-points-container');
 
     console.log('Game elements loaded:', { 
         canvas: canvas, 
@@ -220,6 +227,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let coins = [];
     let obstacles = [];
     let shields = []; // Array to store shield power-ups
+    let doublePoints = []; // Array to store double points power-ups
     let score = 0;
     let ethCollected = 0;
     let distanceTraveled = 0;
@@ -618,6 +626,62 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Double Points power-up class
+    class DoublePoints {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.width = 30;
+            this.height = 30;
+            this.collected = false;
+            this.rotation = 0;
+            this.oscillation = 0;
+        }
+
+        update() {
+            this.x -= PIPE_SPEED;
+            this.rotation += 0.04;
+            this.oscillation += 0.03;
+            // Add gentle floating motion
+            this.y += Math.sin(this.oscillation) * 0.5;
+        }
+
+        draw() {
+            if (this.collected) return;
+            
+            ctx.save();
+            ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+            ctx.rotate(this.rotation);
+            
+            // Draw double points icon (x2)
+            ctx.fillStyle = '#ff3366';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.width/2, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw x2 text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('x2', 0, 0);
+            
+            // Add glow
+            ctx.shadowColor = '#ff3366';
+            ctx.shadowBlur = 15;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        isOffScreen() {
+            return this.x + this.width < 0;
+        }
+    }
+
     // Update shields
     function updateShields() {
         for (let i = shields.length - 1; i >= 0; i--) {
@@ -690,6 +754,86 @@ document.addEventListener('DOMContentLoaded', function() {
             ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 + 0.4 * pulseIntensity})`;
             ctx.stroke();
             ctx.restore();
+        }
+    }
+
+    // Update double points power-ups
+    function updateDoublePoints() {
+        for (let i = doublePoints.length - 1; i >= 0; i--) {
+            doublePoints[i].update();
+            
+            if (!doublePoints[i].collected) {
+                doublePoints[i].draw();
+                
+                // Check double points collection
+                if (bird.checkCollision(doublePoints[i])) {
+                    doublePoints[i].collected = true;
+                    activateDoublePoints();
+                    
+                    // Double points collection effect
+                    playDoublePointsEffect(doublePoints[i].x, doublePoints[i].y);
+                }
+            }
+            
+            // Remove double points that are off screen
+            if (doublePoints[i].isOffScreen()) {
+                doublePoints.splice(i, 1);
+            }
+        }
+    }
+
+    // Double points collection effect
+    function playDoublePointsEffect(x, y) {
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ff3366';
+        ctx.shadowBlur = 15;
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('DOUBLE POINTS!', x, y - 20);
+        ctx.restore();
+    }
+
+    // Activate double points
+    function activateDoublePoints() {
+        doublePointsActive = true;
+        doublePointsTimeLeft = DOUBLE_POINTS_DURATION;
+        console.log('Double points activated!');
+        
+        // Show double points indicator
+        if (doublePointsContainer) {
+            doublePointsContainer.style.display = 'block';
+            doublePointsContainer.classList.add('power-up-pulse');
+            setTimeout(() => {
+                doublePointsContainer.classList.remove('power-up-pulse');
+            }, 500);
+        }
+    }
+
+    // Update double points status
+    function updateDoublePointsStatus(deltaTime) {
+        if (doublePointsActive) {
+            doublePointsTimeLeft -= deltaTime;
+            
+            // Update UI if container exists
+            if (doublePointsContainer) {
+                const secondsLeft = Math.ceil(doublePointsTimeLeft / 1000);
+                document.getElementById('double-points-time').textContent = secondsLeft + 's';
+                
+                // Update progress bar
+                const percentage = Math.max(0, doublePointsTimeLeft / DOUBLE_POINTS_DURATION * 100);
+                document.getElementById('double-points-bar-fill').style.width = percentage + '%';
+            }
+            
+            if (doublePointsTimeLeft <= 0) {
+                doublePointsActive = false;
+                console.log('Double points deactivated!');
+                
+                // Hide double points indicator
+                if (doublePointsContainer) {
+                    doublePointsContainer.style.display = 'none';
+                }
+            }
         }
     }
 
@@ -954,13 +1098,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 shields.push(new Shield(WIDTH, randomY));
             }
             
+            // Random double points creation
+            if (Math.random() < DOUBLE_POINTS_SPAWN_CHANCE) {
+                const randomY = Math.random() * (HEIGHT - 100) + 50;
+                doublePoints.push(new DoublePoints(WIDTH, randomY));
+            }
+            
             // Random obstacle creation
             if (Math.random() < 0.2) {
                 obstacles.push(new Obstacle());
             }
             
             // Increase score and distance
-            score++;
+            // Apply double points if active
+            const pointsToAdd = doublePointsActive ? 2 : 1;
+            score += pointsToAdd;
+            
+            // Show double points effect if active
+            if (doublePointsActive) {
+                const doubleText = document.createElement('div');
+                doubleText.className = 'double-points-text';
+                doubleText.textContent = '+2';
+                document.querySelector('.game-container').appendChild(doubleText);
+                
+                // Position near the bird
+                doubleText.style.left = (bird.x + bird.width/2) + 'px';
+                doubleText.style.top = (bird.y - 50) + 'px';
+                
+                // Remove after animation
+                setTimeout(() => {
+                    doubleText.remove();
+                }, 1000);
+            }
+            
             distanceTraveled += PIPE_SPEED * PIPE_SPAWN_INTERVAL;
             updateScore();
             boostBirdGlow();
@@ -968,6 +1138,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update shield status
         updateShieldStatus(adjustedDeltaTime);
+        
+        // Update double points status
+        updateDoublePointsStatus(adjustedDeltaTime);
         
         // Update combo
         updateCombo(adjustedDeltaTime);
@@ -996,6 +1169,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update and draw shields
         updateShields();
         
+        // Update and draw double points
+        updateDoublePoints();
+        
         // Update and draw obstacles
         updateObstacles();
         
@@ -1016,6 +1192,7 @@ document.addEventListener('DOMContentLoaded', function() {
         coins = [];
         obstacles = [];
         shields = [];
+        doublePoints = [];
         score = 0;
         ethCollected = 0;
         distanceTraveled = 0;
@@ -1024,11 +1201,18 @@ document.addEventListener('DOMContentLoaded', function() {
         shieldTimeLeft = 0;
         comboCount = 0;
         comboTimeLeft = 0;
+        doublePointsActive = false;
+        doublePointsTimeLeft = 0;
         slowMotionFactor = 1.0;
         lastTime = null;
         
         updateScore();
         resetCombo();
+        
+        // Hide power-up indicators
+        if (doublePointsContainer) {
+            doublePointsContainer.style.display = 'none';
+        }
         
         gameOver.style.display = 'none';
         
