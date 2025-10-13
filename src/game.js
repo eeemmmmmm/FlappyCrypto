@@ -1,8 +1,13 @@
+import { GameEngine } from './engine/GameEngine.js';
+import { ParticleSystem } from './effects/ParticleSystem.js';
+import { AudioManager } from './audio/AudioManager.js';
+
 // Wait for DOM to fully load before executing code
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎮 Initializing Enhanced FlappyCrypto Game Engine...');
+    
     // Main game variables
     const canvas = document.getElementById('game-canvas');
-    const ctx = canvas.getContext('2d');
     const startButton = document.getElementById('start-button');
     const restartButton = document.getElementById('restart-button');
     const gameOver = document.getElementById('game-over');
@@ -13,8 +18,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const distanceTraveledDisplay = document.getElementById('distance-traveled');
     const starryBackground = document.getElementById('starry-background');
 
-    // --- Comet animation array must be declared before any function uses it ---
+    // Initialize advanced game engine
+    const gameEngine = new GameEngine(canvas, {
+        enablePerformanceMonitoring: true,
+        enableObjectPooling: true,
+        enableParticleSystem: true,
+        enableAudioSystem: true,
+        targetFPS: 60
+    });
+
+    // Enhanced comet system with performance optimization
     let comets = [];
+    let cometPool = [];
     
     // --- Shield power-up variables ---
     let shieldActive = false;
@@ -53,6 +68,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Game field dimensions (standard size)
     const WIDTH = canvas.width;
     const HEIGHT = canvas.height;
+    
+    // Enhanced physics configuration
+    const PHYSICS = {
+        gravity: 0.25,
+        flapPower: -6,
+        terminalVelocity: 12,
+        airResistance: 0.02,
+        windForce: 0.1
+    };
+    
+    // Enhanced game configuration
+    const CONFIG = {
+        pipeSpeed: 1.5,
+        pipeSpawnInterval: 180,
+        pipeGap: 200,
+        coinSpawnChance: 0.5,
+        difficultyIncrease: 0.001,
+        maxDifficulty: 2.0
+    };
     
     // Night mode toggle
     const nightModeBtn = document.getElementById('night-mode-toggle');
@@ -257,8 +291,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create background on load
     createBackground();
 
-    // Bird class (cryptocurrency token)
-    class Bird {
+    // Enhanced Bird class with advanced physics and effects
+    class EnhancedBird {
         constructor() {
             this.x = WIDTH / 4;
             this.y = HEIGHT / 2;
@@ -267,22 +301,110 @@ document.addEventListener('DOMContentLoaded', function() {
             this.height = 30;
             this.alive = true;
             this.rotation = 0;
+            
+            // Enhanced physics
+            this.acceleration = 0;
+            this.maxVelocity = PHYSICS.terminalVelocity;
+            this.horizontalVelocity = 0;
+            
+            // Visual enhancements
+            this.scale = 1.0;
+            this.targetScale = 1.0;
+            this.glowIntensity = 0.4;
+            this.targetGlow = 0.4;
+            this.pulsePhase = 0;
+            
+            // Trail effect
+            this.trailPositions = [];
+            this.maxTrailLength = 8;
+            
+            // Animation state
+            this.animationFrame = 0;
+            this.wingPhase = 0;
+            
+            // Physics state
+            this.isFlapping = false;
+            this.flapCooldown = 0;
+            
+            // Stats tracking
+            this.stats = {
+                totalFlaps: 0,
+                airTime: 0,
+                maxAltitude: HEIGHT
+            };
         }
 
         flap() {
-            if (this.alive) {
-                this.velocity = FLAP_POWER;
+            if (this.alive && this.flapCooldown <= 0) {
+                this.velocity = PHYSICS.flapPower;
+                this.acceleration = 0;
+                this.isFlapping = true;
+                this.flapCooldown = 100; // ms
+                
+                // Visual effects
+                this.targetScale = 1.2;
+                this.targetGlow = 1.0;
+                
+                // Create flap particles
+                gameEngine.createParticleEffect('trail', 
+                    this.x - 10, this.y + this.height/2, 
+                    {
+                        count: 3,
+                        speedRange: [-2, 0],
+                        sizeRange: [1, 3],
+                        lifeRange: [200, 400],
+                        colors: ['#62c9ff', '#ffffff']
+                    }
+                );
+                
+                // Play flap sound
+                gameEngine.playSFX('flap', { 
+                    pitch: 0.8 + Math.random() * 0.4,
+                    volume: 0.7 
+                });
+                
+                this.stats.totalFlaps++;
             }
         }
 
-        update() {
-            this.velocity += GRAVITY;
-            this.y += this.velocity;
+        update(deltaTime) {
+            // Update cooldowns
+            this.flapCooldown = Math.max(0, this.flapCooldown - deltaTime);
             
-            // Restrict bird movement within screen boundaries
+            // Enhanced physics
+            if (!this.isFlapping) {
+                this.acceleration += PHYSICS.gravity * (deltaTime / 16.67);
+            }
+            
+            // Apply air resistance
+            this.velocity *= (1 - PHYSICS.airResistance * (deltaTime / 16.67));
+            
+            // Update velocity
+            this.velocity += this.acceleration * (deltaTime / 16.67);
+            this.velocity = Math.min(this.velocity, this.maxVelocity);
+            
+            // Update position
+            this.y += this.velocity * (deltaTime / 16.67);
+            
+            // Horizontal drift (wind effect)
+            this.horizontalVelocity += (Math.random() - 0.5) * PHYSICS.windForce;
+            this.horizontalVelocity *= 0.95; // Damping
+            this.x += this.horizontalVelocity * (deltaTime / 16.67);
+            
+            // Keep bird in horizontal bounds with slight elasticity
+            if (this.x < 20) {
+                this.x = 20;
+                this.horizontalVelocity = Math.abs(this.horizontalVelocity) * 0.5;
+            }
+            if (this.x > WIDTH - this.width - 20) {
+                this.x = WIDTH - this.width - 20;
+                this.horizontalVelocity = -Math.abs(this.horizontalVelocity) * 0.5;
+            }
+            
+            // Boundary checks
             if (this.y < 0) {
                 this.y = 0;
-                this.velocity = 0;
+                this.velocity = Math.max(0, this.velocity);
             }
             
             if (this.y + this.height > HEIGHT) {
@@ -290,53 +412,183 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.alive = false;
             }
             
-            // Update rotation angle based on velocity
-            this.rotation = Math.min(Math.PI/6, Math.max(-Math.PI/6, this.velocity * 0.08)); // Сделано плавнее
+            // Update rotation based on velocity and horizontal movement
+            const targetRotation = Math.min(Math.PI/4, Math.max(-Math.PI/4, 
+                this.velocity * 0.06 + this.horizontalVelocity * 0.1));
+            this.rotation += (targetRotation - this.rotation) * 0.1;
+            
+            // Update visual effects
+            this.pulsePhase += 0.08 * (deltaTime / 16.67);
+            this.targetGlow = 0.4 + 0.15 * Math.sin(this.pulsePhase);
+            this.glowIntensity += (this.targetGlow - this.glowIntensity) * 0.15;
+            
+            // Scale animation
+            this.scale += (this.targetScale - this.scale) * 0.2;
+            this.targetScale += (1.0 - this.targetScale) * 0.1;
+            
+            // Wing animation
+            this.wingPhase += 0.3 * (deltaTime / 16.67);
+            
+            // Trail effect
+            this.updateTrail();
+            
+            // Update stats
+            this.stats.airTime += deltaTime;
+            this.stats.maxAltitude = Math.min(this.stats.maxAltitude, this.y);
+            
+            // Reset flapping state
+            this.isFlapping = false;
+            
+            // Create trail particles when moving fast
+            if (Math.abs(this.velocity) > 3) {
+                gameEngine.getSystem('particles').createTrail(
+                    this.x + this.width/2, this.y + this.height/2,
+                    -this.velocity * 0.2, this.horizontalVelocity,
+                    '#62c9ff', Math.abs(this.velocity) / 10
+                );
+            }
         }
 
-        draw() {
+        updateTrail() {
+            // Add current position to trail
+            this.trailPositions.push({
+                x: this.x + this.width/2,
+                y: this.y + this.height/2,
+                time: Date.now()
+            });
+            
+            // Remove old trail positions
+            const now = Date.now();
+            this.trailPositions = this.trailPositions.filter(pos => 
+                now - pos.time < 500 && this.trailPositions.length <= this.maxTrailLength
+            );
+        }
+
+        render(ctx) {
+            // Draw trail
+            this.drawTrail(ctx);
+            
             ctx.save();
             ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+            ctx.scale(this.scale, this.scale);
             ctx.rotate(this.rotation);
             
-            // Draw ETH symbol
+            // Enhanced glow effect
+            ctx.shadowColor = `rgba(98, 201, 255, ${this.glowIntensity})`;
+            ctx.shadowBlur = 20 + 20 * this.glowIntensity;
+            
+            // Wing animation
+            const wingOffset = Math.sin(this.wingPhase) * 3;
+            
+            // Draw ETH symbol with wing animation
             ctx.fillStyle = '#62c9ff';
             ctx.beginPath();
-            ctx.moveTo(-this.width/2, 0);
-            ctx.lineTo(0, -this.height/2);
-            ctx.lineTo(this.width/2, 0);
-            ctx.lineTo(0, this.height/2);
+            ctx.moveTo(-this.width/2, wingOffset);
+            ctx.lineTo(0, -this.height/2 - wingOffset);
+            ctx.lineTo(this.width/2, wingOffset);
+            ctx.lineTo(0, this.height/2 + wingOffset);
             ctx.closePath();
             ctx.fill();
             
-            // Add details
+            // Add details with wing animation
             ctx.fillStyle = '#3ab0ff';
             ctx.beginPath();
-            ctx.moveTo(-this.width/2, 0);
-            ctx.lineTo(0, this.height/4);
-            ctx.lineTo(this.width/2, 0);
+            ctx.moveTo(-this.width/2, wingOffset);
+            ctx.lineTo(0, this.height/4 + wingOffset);
+            ctx.lineTo(this.width/2, wingOffset);
             ctx.closePath();
             ctx.fill();
             
-            // Add glow effect
-            ctx.shadowColor = '#62c9ff';
-            ctx.shadowBlur = 10;
+            // Enhanced outline
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.7 + 0.3 * this.glowIntensity})`;
             ctx.lineWidth = 2;
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
             ctx.stroke();
+            
+            // Speed lines when moving fast
+            if (Math.abs(this.velocity) > 5) {
+                ctx.strokeStyle = `rgba(255, 255, 255, ${Math.abs(this.velocity) / 15})`;
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 3; i++) {
+                    const offset = (i + 1) * 8;
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width/2 - offset, -2 + i * 2);
+                    ctx.lineTo(-this.width/2 - offset - 10, -2 + i * 2);
+                    ctx.stroke();
+                }
+            }
+            
+            ctx.restore();
+        }
+        
+        drawTrail(ctx) {
+            if (this.trailPositions.length < 2) return;
+            
+            ctx.save();
+            ctx.globalCompositeOperation = 'screen';
+            
+            for (let i = 1; i < this.trailPositions.length; i++) {
+                const pos = this.trailPositions[i];
+                const prevPos = this.trailPositions[i - 1];
+                const age = (Date.now() - pos.time) / 500;
+                const alpha = (1 - age) * 0.3;
+                
+                if (alpha <= 0) continue;
+                
+                ctx.strokeStyle = `rgba(98, 201, 255, ${alpha})`;
+                ctx.lineWidth = (1 - age) * 3;
+                ctx.lineCap = 'round';
+                
+                ctx.beginPath();
+                ctx.moveTo(prevPos.x, prevPos.y);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+            }
             
             ctx.restore();
         }
 
         checkCollision(object) {
-            // Уменьшаем хитбокс для более комфортной игры
-            const hitboxShrink = 5;
-            return (
-                this.x + hitboxShrink < object.x + object.width - hitboxShrink &&
-                this.x + this.width - hitboxShrink > object.x + hitboxShrink &&
-                this.y + hitboxShrink < object.y + object.height - hitboxShrink &&
-                this.y + this.height - hitboxShrink > object.y + hitboxShrink
-            );
+            // Enhanced collision detection with rotation
+            const hitboxShrink = 3; // More forgiving
+            const centerX = this.x + this.width/2;
+            const centerY = this.y + this.height/2;
+            
+            // Rotated bounding box collision (simplified)
+            const cos = Math.cos(-this.rotation);
+            const sin = Math.sin(-this.rotation);
+            
+            // Check object corners against rotated bird bounds
+            const corners = [
+                { x: object.x, y: object.y },
+                { x: object.x + object.width, y: object.y },
+                { x: object.x, y: object.y + object.height },
+                { x: object.x + object.width, y: object.y + object.height }
+            ];
+            
+            for (const corner of corners) {
+                // Rotate corner relative to bird center
+                const dx = corner.x - centerX;
+                const dy = corner.y - centerY;
+                const rotX = dx * cos - dy * sin;
+                const rotY = dx * sin + dy * cos;
+                
+                // Check if rotated corner is inside bird bounds
+                if (Math.abs(rotX) < (this.width/2 - hitboxShrink) && 
+                    Math.abs(rotY) < (this.height/2 - hitboxShrink)) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+        
+        getStats() {
+            return {
+                ...this.stats,
+                currentAltitude: HEIGHT - this.y,
+                efficiency: this.stats.totalFlaps > 0 ? 
+                    (this.stats.airTime / this.stats.totalFlaps).toFixed(1) + 'ms/flap' : 'N/A'
+            };
         }
     }
 
@@ -1184,118 +1436,982 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Game initialization function - modified to reset combo and slow motion
-    function initGame() {
-        console.log('Initializing game...');
-        bird = new Bird();
-        pipes = [];
-        coins = [];
-        obstacles = [];
-        shields = [];
-        doublePoints = [];
-        score = 0;
-        ethCollected = 0;
-        distanceTraveled = 0;
-        frameCount = 0;
-        shieldActive = false;
-        shieldTimeLeft = 0;
-        comboCount = 0;
-        comboTimeLeft = 0;
-        doublePointsActive = false;
-        doublePointsTimeLeft = 0;
-        slowMotionFactor = 1.0;
-        lastTime = null;
-        
-        updateScore();
-        resetCombo();
-        
-        // Hide power-up indicators
-        if (doublePointsContainer) {
-            doublePointsContainer.style.display = 'none';
+    // Enhanced Game Scene with Modern Architecture
+    class GameScene {
+        constructor() {
+            this.reset();
         }
         
+        reset() {
+            // Core game state
+            this.bird = null;
+            this.gameEntities = {
+                pipes: [],
+                coins: [],
+                obstacles: [],
+                shields: [],
+                powerups: []
+            };
+            
+            // Game statistics
+            this.gameStats = {
+                score: 0,
+                ethCollected: 0,
+                distanceTraveled: 0,
+                frameCount: 0,
+                startTime: Date.now(),
+                gameTime: 0
+            };
+            
+            // Power-up states
+            this.powerUpStates = {
+                shield: { active: false, timeLeft: 0, duration: 5000 },
+                doublePoints: { active: false, timeLeft: 0, duration: 10000 },
+                combo: { count: 0, timeLeft: 0, duration: 3000 }
+            };
+            
+            // Game configuration (dynamic difficulty)
+            this.difficulty = {
+                current: 1.0,
+                increase: CONFIG.difficultyIncrease,
+                max: CONFIG.maxDifficulty
+            };
+            
+            // Performance tracking
+            this.performanceStats = {
+                avgFPS: 60,
+                frameSkips: 0,
+                lastOptimization: Date.now()
+            };
+            
+            this.isActive = false;
+            this.isPaused = false;
+        }
+        
+        onEnter(engine) {
+            console.log('🎮 Starting Enhanced FlappyCrypto Game...');
+            
+            this.engine = engine;
+            this.reset();
+            
+            // Create enhanced bird
+            this.bird = new EnhancedBird();
+            engine.addEntity(this.bird);
+            
+            // Initialize UI
+            this.updateUI();
+            this.hideGameOver();
+            this.hidePowerUpIndicators();
+            
+            this.isActive = true;
+            
+            // Play start sound
+            engine.playSFX('powerup', { pitch: 1.2, volume: 0.5 });
+            
+            // Create start particle effect
+            engine.createParticleEffect('sparkle', WIDTH/2, HEIGHT/2, {
+                count: 20,
+                speedRange: [2, 6],
+                sizeRange: [2, 8],
+                colors: ['#62c9ff', '#62ffbd', '#ffffff']
+            });
+        }
+        
+        onExit() {
+            this.isActive = false;
+            this.cleanup();
+        }
+        
+        onInput(type, data) {
+            if (!this.isActive || this.isPaused) return;
+            
+            // Handle flap inputs
+            if ((type === 'keydown' && data.code === 'Space') ||
+                type === 'mousedown' || type === 'touchstart') {
+                
+                if (data.event) data.event.preventDefault();
+                
+                if (this.bird && this.bird.alive) {
+                    this.bird.flap();
+                }
+            }
+            
+            // Debug controls (dev mode)
+            if (type === 'keydown') {
+                switch (data.code) {
+                    case 'KeyD':
+                        this.engine.debug.enabled = !this.engine.debug.enabled;
+                        break;
+                    case 'KeyP':
+                        this.togglePause();
+                        break;
+                    case 'KeyR':
+                        if (!this.bird.alive) this.restart();
+                        break;
+                }
+            }
+        }
+        
+        update(deltaTime) {
+            if (!this.isActive || this.isPaused) return;
+            
+            // Update game time
+            this.gameStats.gameTime = Date.now() - this.gameStats.startTime;
+            
+            // Update difficulty over time
+            this.updateDifficulty();
+            
+            // Spawn new entities
+            this.spawnEntities();
+            
+            // Update power-up states
+            this.updatePowerUps(deltaTime);
+            
+            // Update game entities using pools
+            this.updateEntities(deltaTime);
+            
+            // Check collisions with spatial partitioning
+            this.checkCollisions();
+            
+            // Update UI
+            this.updateUI();
+            
+            // Performance monitoring
+            this.updatePerformance();
+            
+            // Check game over condition
+            if (this.bird && !this.bird.alive) {
+                this.endGame();
+            }
+        }
+        
+        render(ctx, interpolation) {
+            // Background is already rendered by starry background system
+            
+            // Render entities with interpolation
+            for (const [type, entities] of Object.entries(this.gameEntities)) {
+                for (const entity of entities) {
+                    if (entity.render && entity.active !== false) {
+                        ctx.save();
+                        entity.render(ctx, interpolation);
+                        ctx.restore();
+                    }
+                }
+            }
+            
+            // Render power-up effects
+            this.renderPowerUpEffects(ctx);
+            
+            // Render UI overlays
+            this.renderUIOverlays(ctx);
+        }
+        
+        updateDifficulty() {
+            const timeFactor = this.gameStats.gameTime / 60000; // Increase every minute
+            this.difficulty.current = Math.min(
+                1.0 + timeFactor * this.difficulty.increase,
+                this.difficulty.max
+            );
+        }
+        
+        spawnEntities() {
+            this.gameStats.frameCount++;
+            
+            // Adjusted spawn rate based on difficulty
+            const spawnInterval = Math.max(
+                CONFIG.pipeSpawnInterval / this.difficulty.current,
+                120 // Minimum interval
+            );
+            
+            if (this.gameStats.frameCount % Math.floor(spawnInterval) === 0) {
+                this.spawnPipe();
+                this.spawnCollectibles();
+                this.incrementScore();
+            }
+        }
+        
+        spawnPipe() {
+            const pipe = this.engine.getSystem('pools').pipes.acquire();
+            this.initializePipe(pipe);
+            this.gameEntities.pipes.push(pipe);
+        }
+        
+        spawnCollectibles() {
+            // Spawn coin
+            if (Math.random() < CONFIG.coinSpawnChance) {
+                const coin = this.engine.getSystem('pools').coins.acquire();
+                this.initializeCoin(coin);
+                this.gameEntities.coins.push(coin);
+            }
+            
+            // Spawn power-ups based on difficulty and chance
+            if (Math.random() < 0.1 * this.difficulty.current) {
+                this.spawnRandomPowerUp();
+            }
+            
+            // Spawn obstacles
+            if (Math.random() < 0.2 * this.difficulty.current) {
+                const obstacle = this.engine.getSystem('pools').obstacles.acquire();
+                this.initializeObstacle(obstacle);
+                this.gameEntities.obstacles.push(obstacle);
+            }
+        }
+        
+        spawnRandomPowerUp() {
+            const powerUpType = Math.random() < 0.7 ? 'shield' : 'doublePoints';
+            const powerUp = this.engine.getSystem('pools').powerups.acquire();
+            this.initializePowerUp(powerUp, powerUpType);
+            this.gameEntities.shields.push(powerUp); // Using shields array for compatibility
+        }
+        
+        initializePipe(pipe) {
+            pipe.x = WIDTH;
+            pipe.width = 60;
+            pipe.passed = false;
+            pipe.active = true;
+            
+            const minTopHeight = 50;
+            const maxTopHeight = HEIGHT - CONFIG.pipeGap - 50;
+            pipe.topHeight = minTopHeight + Math.random() * (maxTopHeight - minTopHeight);
+            pipe.bottomY = pipe.topHeight + CONFIG.pipeGap;
+            pipe.bottomHeight = HEIGHT - pipe.bottomY;
+            
+            pipe.update = function(deltaTime) {
+                this.x -= CONFIG.pipeSpeed * (deltaTime / 16.67);
+            };
+            
+            pipe.render = function(ctx) {
+                // Enhanced pipe rendering with gradients
+                const gradient = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+                gradient.addColorStop(0, '#ff4d4d');
+                gradient.addColorStop(0.5, '#cc0000');
+                gradient.addColorStop(1, '#ff4d4d');
+                
+                ctx.fillStyle = gradient;
+                
+                // Top pipe
+                ctx.fillRect(this.x, 0, this.width, this.topHeight);
+                // Bottom pipe
+                ctx.fillRect(this.x, this.bottomY, this.width, this.bottomHeight);
+                
+                // Enhanced pipe caps
+                ctx.fillStyle = '#ff6666';
+                ctx.fillRect(this.x - 5, this.topHeight - 20, this.width + 10, 20);
+                ctx.fillRect(this.x - 5, this.bottomY, this.width + 10, 20);
+            };
+            
+            pipe.isOffScreen = function() {
+                return this.x + this.width < 0;
+            };
+        }
+        
+        initializeCoin(coin) {
+            coin.x = WIDTH;
+            coin.y = Math.random() * (HEIGHT - 100) + 50;
+            coin.width = 30;
+            coin.height = 30;
+            coin.active = true;
+            coin.collected = false;
+            coin.rotation = 0;
+            coin.oscillation = 0;
+            
+            coin.update = function(deltaTime) {
+                this.x -= CONFIG.pipeSpeed * (deltaTime / 16.67);
+                this.rotation += 0.03 * (deltaTime / 16.67);
+                this.oscillation += 0.03 * (deltaTime / 16.67);
+                this.y += Math.sin(this.oscillation) * 0.5;
+            };
+            
+            coin.render = function(ctx) {
+                if (this.collected) return;
+                
+                ctx.save();
+                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                ctx.rotate(this.rotation);
+                
+                // Enhanced coin with better glow
+                ctx.shadowColor = '#62ffbd';
+                ctx.shadowBlur = 15;
+                
+                ctx.fillStyle = '#62ffbd';
+                ctx.beginPath();
+                ctx.moveTo(-this.width/2, 0);
+                ctx.lineTo(0, -this.height/2);
+                ctx.lineTo(this.width/2, 0);
+                ctx.lineTo(0, this.height/2);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.restore();
+            };
+            
+            coin.isOffScreen = function() {
+                return this.x + this.width < 0;
+            };
+        }
+        
+        initializeObstacle(obstacle) {
+            obstacle.x = WIDTH;
+            obstacle.y = Math.random() * (HEIGHT - 100) + 50;
+            obstacle.width = 40;
+            obstacle.height = 40;
+            obstacle.active = true;
+            obstacle.type = Math.random() < 0.5 ? 'bear' : 'bug';
+            obstacle.rotation = 0;
+            obstacle.rotationSpeed = (Math.random() - 0.5) * 0.01;
+            
+            obstacle.update = function(deltaTime) {
+                this.x -= CONFIG.pipeSpeed * 1.1 * (deltaTime / 16.67);
+                this.rotation += this.rotationSpeed * (deltaTime / 16.67);
+            };
+            
+            obstacle.render = function(ctx) {
+                ctx.save();
+                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                ctx.rotate(this.rotation);
+                
+                if (this.type === 'bear') {
+                    ctx.shadowColor = '#ff6b6b';
+                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = '#ff6b6b';
+                    
+                    // Bear ears
+                    ctx.beginPath();
+                    ctx.arc(-this.width/4, -this.height/4, this.width/4, 0, Math.PI * 2);
+                    ctx.arc(this.width/4, -this.height/4, this.width/4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Bear face
+                    ctx.beginPath();
+                    ctx.arc(0, this.height/5, this.width/3, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.shadowColor = '#4d79ff';
+                    ctx.shadowBlur = 10;
+                    ctx.fillStyle = '#4d79ff';
+                    ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+                    
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '20px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('!', 0, 0);
+                }
+                
+                ctx.restore();
+            };
+            
+            obstacle.isOffScreen = function() {
+                return this.x + this.width < 0;
+            };
+        }
+        
+        initializePowerUp(powerUp, type) {
+            powerUp.x = WIDTH;
+            powerUp.y = Math.random() * (HEIGHT - 100) + 50;
+            powerUp.width = 30;
+            powerUp.height = 30;
+            powerUp.active = true;
+            powerUp.collected = false;
+            powerUp.type = type;
+            powerUp.rotation = 0;
+            powerUp.oscillation = 0;
+            
+            powerUp.update = function(deltaTime) {
+                this.x -= CONFIG.pipeSpeed * (deltaTime / 16.67);
+                this.rotation += 0.04 * (deltaTime / 16.67);
+                this.oscillation += 0.03 * (deltaTime / 16.67);
+                this.y += Math.sin(this.oscillation) * 0.5;
+            };
+            
+            powerUp.render = function(ctx) {
+                if (this.collected) return;
+                
+                ctx.save();
+                ctx.translate(this.x + this.width/2, this.y + this.height/2);
+                ctx.rotate(this.rotation);
+                
+                const color = this.type === 'shield' ? '#4d79ff' : '#ff3366';
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 15;
+                ctx.fillStyle = color;
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, this.width/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.type === 'shield' ? '🛡️' : 'x2', 0, 0);
+                
+                ctx.restore();
+            };
+            
+            powerUp.isOffScreen = function() {
+                return this.x + this.width < 0;
+            };
+        }
+        
+        updateEntities(deltaTime) {
+            // Update all entity types
+            for (const [type, entities] of Object.entries(this.gameEntities)) {
+                for (let i = entities.length - 1; i >= 0; i--) {
+                    const entity = entities[i];
+                    
+                    if (entity.update) {
+                        entity.update(deltaTime);
+                    }
+                    
+                    // Remove off-screen entities and return to pool
+                    if (entity.isOffScreen && entity.isOffScreen()) {
+                        const pool = this.engine.getSystem('pools')[type];
+                        if (pool) {
+                            pool.release(entity);
+                        }
+                        entities.splice(i, 1);
+                    }
+                }
+            }
+        }
+        
+        updatePowerUps(deltaTime) {
+            // Update shield
+            if (this.powerUpStates.shield.active) {
+                this.powerUpStates.shield.timeLeft -= deltaTime;
+                if (this.powerUpStates.shield.timeLeft <= 0) {
+                    this.deactivateShield();
+                }
+                this.updateShieldUI();
+            }
+            
+            // Update double points
+            if (this.powerUpStates.doublePoints.active) {
+                this.powerUpStates.doublePoints.timeLeft -= deltaTime;
+                if (this.powerUpStates.doublePoints.timeLeft <= 0) {
+                    this.deactivateDoublePoints();
+                }
+                this.updateDoublePointsUI();
+            }
+            
+            // Update combo
+            if (this.powerUpStates.combo.count > 0) {
+                this.powerUpStates.combo.timeLeft -= deltaTime;
+                if (this.powerUpStates.combo.timeLeft <= 0) {
+                    this.resetCombo();
+                }
+                this.updateComboUI();
+            }
+        }
+        
+        checkCollisions() {
+            if (!this.bird || !this.bird.alive) return;
+            
+            // Skip if shield is active
+            if (this.powerUpStates.shield.active) return;
+            
+            // Check pipe collisions
+            for (const pipe of this.gameEntities.pipes) {
+                if (this.bird.checkCollision({ x: pipe.x, y: 0, width: pipe.width, height: pipe.topHeight }) ||
+                    this.bird.checkCollision({ x: pipe.x, y: pipe.bottomY, width: pipe.width, height: pipe.bottomHeight })) {
+                    this.handleCollision('pipe');
+                    return;
+                }
+            }
+            
+            // Check obstacle collisions
+            for (const obstacle of this.gameEntities.obstacles) {
+                if (this.bird.checkCollision(obstacle)) {
+                    this.handleCollision('obstacle');
+                    return;
+                }
+            }
+            
+            // Check collectible interactions
+            this.checkCollectibleCollisions();
+        }
+        
+        checkCollectibleCollisions() {
+            // Check coin collection
+            for (const coin of this.gameEntities.coins) {
+                if (!coin.collected && this.bird.checkCollision(coin)) {
+                    this.collectCoin(coin);
+                }
+            }
+            
+            // Check power-up collection
+            for (const powerUp of this.gameEntities.shields) {
+                if (!powerUp.collected && this.bird.checkCollision(powerUp)) {
+                    this.collectPowerUp(powerUp);
+                }
+            }
+        }
+        
+        collectCoin(coin) {
+            coin.collected = true;
+            this.gameStats.ethCollected++;
+            this.addToCombo();
+            
+            // Effects
+            this.engine.createParticleEffect('collect', coin.x + coin.width/2, coin.y + coin.height/2);
+            this.engine.playSFX('collect', { pitch: 1.0 + this.powerUpStates.combo.count * 0.1 });
+        }
+        
+        collectPowerUp(powerUp) {
+            powerUp.collected = true;
+            
+            if (powerUp.type === 'shield') {
+                this.activateShield();
+            } else if (powerUp.type === 'doublePoints') {
+                this.activateDoublePoints();
+            }
+            
+            // Effects
+            this.engine.createParticleEffect('powerup', powerUp.x + powerUp.width/2, powerUp.y + powerUp.height/2);
+            this.engine.playSFX('powerup');
+        }
+        
+        handleCollision(type) {
+            this.bird.alive = false;
+            
+            // Collision effects
+            this.engine.createParticleEffect('explosion', 
+                this.bird.x + this.bird.width/2, 
+                this.bird.y + this.bird.height/2,
+                {
+                    count: 25,
+                    speedRange: [3, 10],
+                    colors: ['#ff6b6b', '#ff9f43', '#ffffff']
+                }
+            );
+            
+            this.engine.playSFX('collision', { volume: 0.8 });
+        }
+        
+        incrementScore() {
+            const basePoints = 1;
+            const multiplier = this.powerUpStates.doublePoints.active ? 2 : 1;
+            const comboBonus = this.powerUpStates.combo.count > 1 ? this.powerUpStates.combo.count - 1 : 0;
+            
+            const totalPoints = (basePoints + comboBonus) * multiplier;
+            this.gameStats.score += totalPoints;
+            this.gameStats.distanceTraveled += CONFIG.pipeSpeed * CONFIG.pipeSpawnInterval;
+            
+            // Show score effect if bonus applied
+            if (totalPoints > 1) {
+                this.showScoreBonus(totalPoints - 1);
+            }
+        }
+        
+        showScoreBonus(bonus) {
+            // Create floating score text effect
+            this.engine.createParticleEffect('sparkle', 
+                this.bird.x + this.bird.width/2, 
+                this.bird.y - 30,
+                {
+                    count: bonus,
+                    speedRange: [0.5, 2],
+                    colors: ['#ffaa00']
+                }
+            );
+        }
+        
+        activateShield() {
+            this.powerUpStates.shield.active = true;
+            this.powerUpStates.shield.timeLeft = this.powerUpStates.shield.duration;
+            this.showShieldUI();
+        }
+        
+        deactivateShield() {
+            this.powerUpStates.shield.active = false;
+            this.hideShieldUI();
+        }
+        
+        activateDoublePoints() {
+            this.powerUpStates.doublePoints.active = true;
+            this.powerUpStates.doublePoints.timeLeft = this.powerUpStates.doublePoints.duration;
+            this.showDoublePointsUI();
+        }
+        
+        deactivateDoublePoints() {
+            this.powerUpStates.doublePoints.active = false;
+            this.hideDoublePointsUI();
+        }
+        
+        addToCombo() {
+            this.powerUpStates.combo.count++;
+            this.powerUpStates.combo.timeLeft = this.powerUpStates.combo.duration;
+            this.showComboUI();
+        }
+        
+        resetCombo() {
+            this.powerUpStates.combo.count = 0;
+            this.powerUpStates.combo.timeLeft = 0;
+            this.hideComboUI();
+        }
+        
+        updateUI() {
+            scoreDisplay.textContent = this.gameStats.score;
+            ethDisplay.textContent = this.gameStats.ethCollected;
+            document.getElementById('distance').textContent = Math.floor(this.gameStats.distanceTraveled);
+        }
+        
+        updateShieldUI() {
+            const container = document.getElementById('shield-status-container');
+            if (container && this.powerUpStates.shield.active) {
+                container.style.display = 'flex';
+                const timeElement = document.getElementById('shield-time');
+                if (timeElement) {
+                    timeElement.textContent = Math.ceil(this.powerUpStates.shield.timeLeft / 1000) + 's';
+                }
+            }
+        }
+        
+        updateDoublePointsUI() {
+            const container = document.getElementById('double-points-container');
+            if (container && this.powerUpStates.doublePoints.active) {
+                container.style.display = 'block';
+                const timeElement = document.getElementById('double-points-time');
+                const barElement = document.getElementById('double-points-bar-fill');
+                
+                if (timeElement) {
+                    timeElement.textContent = Math.ceil(this.powerUpStates.doublePoints.timeLeft / 1000) + 's';
+                }
+                if (barElement) {
+                    const percentage = (this.powerUpStates.doublePoints.timeLeft / this.powerUpStates.doublePoints.duration) * 100;
+                    barElement.style.width = percentage + '%';
+                }
+            }
+        }
+        
+        updateComboUI() {
+            const container = document.getElementById('combo-container');
+            if (container && this.powerUpStates.combo.count > 0) {
+                container.style.display = 'block';
+                const countElement = document.getElementById('combo-count');
+                const barElement = document.getElementById('combo-bar-fill');
+                
+                if (countElement) {
+                    countElement.textContent = this.powerUpStates.combo.count + 'x';
+                }
+                if (barElement) {
+                    const percentage = (this.powerUpStates.combo.timeLeft / this.powerUpStates.combo.duration) * 100;
+                    barElement.style.width = percentage + '%';
+                }
+            }
+        }
+        
+        showShieldUI() {
+            const container = document.getElementById('shield-status-container');
+            if (container) container.style.display = 'flex';
+        }
+        
+        hideShieldUI() {
+            const container = document.getElementById('shield-status-container');
+            if (container) container.style.display = 'none';
+        }
+        
+        showDoublePointsUI() {
+            const container = document.getElementById('double-points-container');
+            if (container) {
+                container.style.display = 'block';
+                container.classList.add('power-up-pulse');
+                setTimeout(() => container.classList.remove('power-up-pulse'), 500);
+            }
+        }
+        
+        hideDoublePointsUI() {
+            const container = document.getElementById('double-points-container');
+            if (container) container.style.display = 'none';
+        }
+        
+        showComboUI() {
+            const container = document.getElementById('combo-container');
+            if (container) {
+                container.style.display = 'block';
+                container.classList.add('combo-pulse');
+                setTimeout(() => container.classList.remove('combo-pulse'), 300);
+            }
+        }
+        
+        hideComboUI() {
+            const container = document.getElementById('combo-container');
+            if (container) container.style.display = 'none';
+        }
+        
+        hidePowerUpIndicators() {
+            this.hideShieldUI();
+            this.hideDoublePointsUI();
+            this.hideComboUI();
+        }
+        
+        hideGameOver() {
         gameOver.style.display = 'none';
+        }
         
-        gameActive = true;
+        renderPowerUpEffects(ctx) {
+            // Render shield effect
+            if (this.powerUpStates.shield.active && this.bird) {
+                const pulseIntensity = 0.5 + 0.5 * Math.sin(Date.now() / 200);
+                const radius = this.bird.width * 0.8 * (1 + 0.2 * pulseIntensity);
+                
+                ctx.save();
+                ctx.globalAlpha = 0.3 + 0.2 * pulseIntensity;
+                ctx.fillStyle = `rgba(77, 121, 255, ${0.3 + 0.2 * pulseIntensity})`;
+                ctx.beginPath();
+                ctx.arc(this.bird.x + this.bird.width/2, this.bird.y + this.bird.height/2, radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 + 0.4 * pulseIntensity})`;
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
         
-        // Start game loop
-        requestAnimationFrame(gameLoop);
+        renderUIOverlays(ctx) {
+            // Additional UI overlays can be rendered here
+        }
+        
+        updatePerformance() {
+            // Monitor and optimize performance
+            if (this.engine.performanceMonitor) {
+                const metrics = this.engine.performanceMonitor.getMetrics();
+                this.performanceStats.avgFPS = metrics.fps;
+                
+                // Auto-adjust quality based on performance
+                if (metrics.fps < 45 && Date.now() - this.performanceStats.lastOptimization > 5000) {
+                    this.optimizePerformance();
+                    this.performanceStats.lastOptimization = Date.now();
+                }
+            }
+        }
+        
+        optimizePerformance() {
+            console.log('🔧 Auto-optimizing game performance...');
+            
+            // Reduce particle counts if performance is poor
+            const particleSystem = this.engine.getSystem('particles');
+            if (particleSystem) {
+                // Reduce active particles by 25%
+                const currentParticles = particleSystem.activeParticles;
+                const reduceCount = Math.floor(currentParticles.length * 0.25);
+                for (let i = 0; i < reduceCount; i++) {
+                    if (currentParticles[i]) {
+                        currentParticles[i].life = 0; // Mark for removal
+                    }
+                }
+            }
+            
+            // Optimize pools
+            this.engine.optimizePools();
+        }
+        
+        endGame() {
+            this.isActive = false;
+            
+            // Update final score display
+            finalScoreDisplay.textContent = this.gameStats.score;
+            ethCollectedDisplay.textContent = this.gameStats.ethCollected;
+            distanceTraveledDisplay.textContent = Math.floor(this.gameStats.distanceTraveled);
+            
+            // Show game over screen
+            gameOver.style.display = 'block';
+            
+            // Dispatch game over event
+            document.dispatchEvent(new CustomEvent('gameOver', {
+                detail: {
+                    score: this.gameStats.score,
+                    ethCollected: this.gameStats.ethCollected,
+                    distance: Math.floor(this.gameStats.distanceTraveled),
+                    gameTime: this.gameStats.gameTime,
+                    difficulty: this.difficulty.current,
+                    birdStats: this.bird.getStats()
+                }
+            }));
+            
+            console.log('🏁 Game Over! Final Stats:', {
+                score: this.gameStats.score,
+                eth: this.gameStats.ethCollected,
+                distance: this.gameStats.distanceTraveled,
+                time: (this.gameStats.gameTime / 1000).toFixed(1) + 's',
+                difficulty: this.difficulty.current.toFixed(2)
+            });
+        }
+        
+        restart() {
+            console.log('🔄 Restarting game...');
+            this.engine.setScene('game');
+        }
+        
+        togglePause() {
+            this.isPaused = !this.isPaused;
+            if (this.isPaused) {
+                console.log('⏸️ Game paused');
+            } else {
+                console.log('▶️ Game resumed');
+            }
+        }
+        
+        cleanup() {
+            // Clean up resources
+            for (const [type, entities] of Object.entries(this.gameEntities)) {
+                const pool = this.engine.getSystem('pools')[type];
+                if (pool) {
+                    pool.releaseAll(entities);
+                }
+                entities.length = 0;
+            }
+            
+            this.hidePowerUpIndicators();
+        }
     }
+
+    // Initialize game scene
+    const gameScene = new GameScene();
+    gameEngine.registerScene('game', gameScene);
 
     // Add lastTime variable for delta time calculation
     let lastTime = null;
 
-    // Event listeners
+    // Enhanced Event Listeners with Engine Integration
     if (startButton) {
-        console.log('Adding click event to startButton');
+        console.log('🎮 Setting up enhanced game controls...');
         startButton.addEventListener('click', function() {
-            console.log('Start button clicked');
-            initGame();
+            console.log('🚀 Start button clicked - Launching Enhanced Game!');
+            gameEngine.start();
+            gameEngine.setScene('game');
         });
     } else {
-        console.error('Start button not found!');
+        console.error('❌ Start button not found!');
     }
     
     // Custom event listener for game start from sidebar button
     document.addEventListener('startGame', function() {
-        console.log('Start game event received');
-        initGame();
+        console.log('🎮 Start game event received');
+        gameEngine.start();
+        gameEngine.setScene('game');
     });
 
     if (restartButton) {
-        console.log('Adding click event to restartButton');
         restartButton.addEventListener('click', function() {
-            console.log('Restart button clicked');
-            initGame();
+            console.log('🔄 Restart button clicked');
+            gameScene.restart();
         });
     } else {
-        console.error('Restart button not found!');
+        console.error('❌ Restart button not found!');
     }
 
-    // Key press handling
+    // Enhanced keyboard controls with debug features
     document.addEventListener('keydown', (event) => {
-        if (event.code === 'Space') {
+        // Game engine will handle input through onInput
+        // This is just for starting the game when not active
+        if (event.code === 'Space' && !gameEngine.isRunning) {
             event.preventDefault();
-            if (!gameActive) {
-                console.log('Starting game with space key');
-                initGame();
-            } else if (gameActive) {
-                bird.flap();
+            console.log('🚀 Starting game with space key');
+            gameEngine.start();
+            gameEngine.setScene('game');
+        }
+        
+        // Global debug controls
+        if (event.code === 'F1') {
+            event.preventDefault();
+            gameEngine.debug.enabled = !gameEngine.debug.enabled;
+            console.log('🐛 Debug mode:', gameEngine.debug.enabled ? 'ON' : 'OFF');
+        }
+        
+        if (event.code === 'F2') {
+            event.preventDefault();
+            const stats = gameEngine.getSystem('particles')?.getStats();
+            const poolStats = {};
+            for (const [name, pool] of Object.entries(gameEngine.getSystem('pools') || {})) {
+                poolStats[name] = pool.getStats();
             }
+            console.log('📊 Performance Stats:', {
+                fps: gameEngine.performanceMonitor?.getMetrics(),
+                particles: stats,
+                pools: poolStats
+            });
         }
     });
 
-    // Touch screen handling
+    // Touch screen handling - delegated to engine
     canvas.addEventListener('touchstart', (event) => {
         event.preventDefault();
-        if (gameActive) {
-            bird.flap();
-        } else {
-            console.log('Starting game with touch');
-            initGame();
+        if (!gameEngine.isRunning) {
+            console.log('🚀 Starting game with touch');
+            gameEngine.start();
+            gameEngine.setScene('game');
         }
+        // Else handled by engine input system
     });
 
-    // Mouse click handling for in-game flap
-    canvas.addEventListener('click', () => {
-        if (gameActive) {
-            bird.flap();
-        } else {
-            console.log('Starting game with canvas click');
-            initGame();
+    // Mouse click handling - delegated to engine
+    canvas.addEventListener('click', (event) => {
+        if (!gameEngine.isRunning) {
+            console.log('🚀 Starting game with canvas click');
+            gameEngine.start();
+            gameEngine.setScene('game');
         }
+        // Else handled by engine input system
     });
 
-    // Initial draw to show the game field
+    // Initial enhanced game field setup
+    const ctx = gameEngine.ctx;
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     ctx.drawImage(backgroundCanvas, 0, 0);
     
-    // Draw initial message
+    // Draw enhanced initial message with effects
+    ctx.save();
     ctx.fillStyle = '#62c9ff';
     ctx.shadowColor = '#62c9ff';
-    ctx.shadowBlur = 15;
-    ctx.font = '24px Arial';
+    ctx.shadowBlur = 20;
+    ctx.font = 'bold 28px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('Нажмите "Start Game"', WIDTH / 2, HEIGHT / 2 - 30);
-    ctx.fillText('чтобы начать', WIDTH / 2, HEIGHT / 2 + 10);
+    
+    // Animated glow effect
+    const glowIntensity = 0.7 + 0.3 * Math.sin(Date.now() / 1000);
+    ctx.shadowBlur = 15 + 10 * glowIntensity;
+    
+    ctx.fillText('🚀 Enhanced FlappyCrypto Ready!', WIDTH / 2, HEIGHT / 2 - 40);
+    
+    ctx.font = '18px Arial';
+    ctx.fillStyle = '#62ffbd';
+    ctx.shadowColor = '#62ffbd';
+    ctx.shadowBlur = 10;
+    ctx.fillText('Press "Start Game" or Space to begin', WIDTH / 2, HEIGHT / 2);
+    
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#ffaa00';
+    ctx.shadowColor = '#ffaa00';
+    ctx.shadowBlur = 8;
+    ctx.fillText('F1: Debug • F2: Performance Stats • P: Pause', WIDTH / 2, HEIGHT / 2 + 30);
+    ctx.restore();
+    
+    // Show initialization complete message
+    console.log('✨ Enhanced FlappyCrypto Game System Initialized!');
+    console.log('🎯 Features Enabled:');
+    console.log('   • Advanced Physics Engine');
+    console.log('   • High-Performance Object Pooling');
+    console.log('   • Procedural Audio System');
+    console.log('   • Particle Effects System');
+    console.log('   • Adaptive Difficulty Scaling');
+    console.log('   • Performance Monitoring & Auto-Optimization');
+    console.log('   • Debug Tools (F1: Toggle, F2: Stats)');
+    console.log('🎮 Ready to play! Click Start Game or press Space.');
+    
+    // Performance monitoring display
+    setInterval(() => {
+        if (gameEngine.debug.enabled && gameEngine.performanceMonitor) {
+            const metrics = gameEngine.performanceMonitor.getMetrics();
+            if (metrics.status === 'poor') {
+                console.warn('⚠️ Performance Warning: FPS below optimal. Auto-optimization may trigger.');
+            }
+        }
+    }, 5000);
 });
